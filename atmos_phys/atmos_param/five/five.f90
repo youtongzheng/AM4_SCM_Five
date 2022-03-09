@@ -1,17 +1,35 @@
 module five_mod
-    use physics_types_mod,  only: physics_tendency_type, physics_type, &
-                                  physics_input_block_type, physics_tendency_block_type
-    ! use atmosphere_mod,  only: dt_atmos
-    use       constants_mod, only: rdgas, grav, rvgas, radius, PI
- 
-    use       constants_mod, only: cp_air, rdgas, grav, rvgas, kappa, pstd_mks                             
-    use block_control_mod,  only: block_control_type
-    use physics_radiation_exch_mod,only: radiation_flux_block_type, &
-                                         radiation_flux_type
-    use field_manager_mod,  only: MODEL_ATMOS
-    use tracer_manager_mod, only: get_tracer_index, get_number_tracers
-    use    time_manager_mod, only: time_type, get_time, set_time, &
-                               operator(+), operator(-)
+use physics_types_mod,  only: physics_tendency_type, physics_type, &
+                              physics_input_block_type, physics_tendency_block_type
+! use atmosphere_mod,  only: dt_atmos
+use       constants_mod, only: rdgas, grav, rvgas, radius, PI
+
+use       constants_mod, only: cp_air, rdgas, grav, rvgas, kappa, pstd_mks                             
+use block_control_mod,  only: block_control_type
+use physics_radiation_exch_mod,only: radiation_flux_block_type, &
+                                      radiation_flux_type
+use field_manager_mod,  only: MODEL_ATMOS
+use tracer_manager_mod, only: get_tracer_index, get_number_tracers
+use    time_manager_mod, only: time_type, get_time, set_time, &
+                            operator(+), operator(-)
+use             fms_mod, only: error_mesg, FATAL, stdlog,  &
+                              write_version_number,       &
+                              mpp_pe, mpp_root_pe,        &
+                              mpp_npes,                   &
+                              file_exist, field_size,     &
+                              open_restart_file,          &
+                              check_nml_error,            &
+                              close_file, set_domain,     &
+                              write_data, field_exist,    &
+                              read_data, mpp_error, NOTE,     &
+                              mpp_clock_id, mpp_clock_begin,  &
+                              mpp_clock_end, CLOCK_SUBCOMPONENT, &
+                              clock_flag_default, nullify_domain
+#ifdef INTERNAL_FILE_NML
+use             mpp_mod, only: input_nml_file, mpp_get_current_pelist
+#else
+use             fms_mod, only: open_namelist_file
+#endif
     !-----------------
     ! FV core modules:
     !-----------------
@@ -54,12 +72,13 @@ module five_mod
 
     ! public diff_cu_mo_five, diff_t_five, diff_m_five, radturbten_five, diff_t_clubb_five
 
-
+    character(len=128) :: version = '$Id$'
+    character(len=128) :: tagname = '$Name$'
+    
     !------------------------------------------------------------------------
     !---namelist-------------------------------------------------------------
     !------------------------------------------------------------------------
     logical :: do_five = .TRUE.
-
     public do_five
 
     ! This is the number of layers to add between E3SM levels
@@ -76,6 +95,8 @@ module five_mod
     
     ! The top layer to which we will add layers to
     real, private :: five_top_toadd = 50000.
+
+    NAMELIST / five_nml / do_five, five_add_nlevels, five_bot_toadd, five_top_toadd
 
     !------------------------------------------------------------------------
     !---Internal variables used for calculation------------------------------
@@ -139,8 +160,33 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
     !--- local varialbes
     integer :: n, nb, ix, jx, npz, nt_tot, nt_prog
     integer          ::  id, jd
+    integer :: unit, ierr, io
     ! real, dimension(size(pt,1),size(pt,2),size(pt,3))   :: pf_host
 #include "fv_point.inc"
+
+!----- read namelist -----
+#ifdef INTERNAL_FILE_NML
+   read (input_nml_file, nml=five_nml, iostat=io)
+   ierr = check_nml_error(io, 'five_nml')
+#else
+   if (file_exist('input.nml')) then
+        unit=open_namelist_file ();
+        ierr=1
+        do while (ierr /= 0)
+           read (unit, nml=five_nml, iostat=io, end=5)
+           ierr=check_nml_error (io, 'five_nml')
+        enddo
+ 5      call close_file (unit);
+   endif
+#endif
+
+    unit = stdlog()
+    if ( mpp_pe() == mpp_root_pe() ) then
+         call write_version_number (version, tagname)
+         write (unit, nml=five_nml)
+    endif
+    call close_file (unit)
+
 
     !compute nlev_five and ph
       call five_pressure_init(pe(1,:,1), ak/(0.01*ps0),bk/0.01, ps0, nlev_five)
