@@ -1,0 +1,10 @@
+ &cloudrad_diagnostics_nml
+        do_isccp = .true.,
+        isccp_actual_radprops = .true.,
+        isccp_scale_factor = 0.85
+/
+
+ &isccp_clouds_nml
+       do_sunlit_only = .false.
+/
+

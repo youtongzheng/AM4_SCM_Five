@@ -1,0 +1,507 @@
+&clubb_setting_nml
+          clubb_dt      = 180
+          do_BL_gauss         = .false.,
+          do_diffK_gauss      = .false.,
+          do_quadrature_gauss = .true.,
+          Var_w = 4.0,
+          do_drp_evap_cf = .true.,
+          use_sclr_HOC  = .true.
+          do_aeromass_clubb_const = .true.,
+          aeromass_clubb_const = 5.e-12,
+          use_online_aerosol = .true.,
+          do_liq_num       = .true.,
+          icheck_temp = 1,
+          do_conv_flag_clubb = 1
+/
+
+&MG_microp_3D_nml
+       do_liq_num = .true.
+       micro_begin_sec = 3600.0
+       init_date = 1981, 7, 6, 5, 15, 0,
+       override_ice_num = 1
+       use_Meyers = .false.
+       use_Cooper = .true.
+/
+
+&MG_2moment_microp_nml
+       allow_all_cldtop_collection = .true.
+       allow_rain_num_evap         = .true.
+       autoconv_scale              =  1.0
+/
+
+
+&aer_ccn_act_nml
+         sul_concen = 0.0
+         low_concen = 0.5
+         high_concen = 1.0
+/
+ 
+ &amip_interp_nml
+    data_set = 'reynolds_oi',
+    date_out_of_range = 'climo'
+/
+
+ &cloud_spec_nml
+       cloud_type_form = 'stratdeep'
+/
+
+&cloudrad_diagnostics_nml
+       do_isccp = .true.,
+       isccp_scale_factor = 1.00
+       water_ice_ratio = 10.
+/
+
+ &cloudrad_package_nml
+       microphys_form = 'predicted'
+/
+
+ &clouds_nml
+       do_zonal_clouds = .false.,
+       do_obs_clouds   = .false.
+/
+
+&clubb_stats_setting_nml
+         do_stats       = .true.,
+         stats_tsamp    = 180., 
+         stats_tout     = 180.,
+         stats_fmt      = 'grads',
+/
+
+&coupler_nml
+         months = 0,
+         days   = 0,
+         hours = 18,
+         dt_atmos = 1800,
+         dt_cpld  = 1800,
+         current_date = 1981, 7, 6, 5, 15, 0,
+         calendar = 'julian'
+/
+
+ &cu_mo_trans_nml
+       transport_scheme='diffusive'
+       diff_norm = 2.5
+/
+
+ &donner_deep_clouds_W_nml
+    using_dge_sw = .true.,
+    using_dge_lw = .true.
+/
+
+ &donner_deep_nml
+        parcel_launch_level = 4
+        model_levels_in_sfcbl = 0
+        donner_deep_freq = 1800
+        write_reduced_restart_file = .true.
+        allow_mesoscale_circulation = .true.
+        do_donner_cape    = .false.
+        do_donner_plume   = .false.
+        do_donner_closure = .false.
+        do_donner_lscloud = .true.
+        do_dcape          = .false.
+        do_lands          = .false.
+        do_freezing_for_cape = .true.
+        do_freezing_for_closure = .true.
+        gama              = 0.0
+        tau               = 28800.
+        tke0              = 0.5
+        cape0             = 500.
+        lochoice          = 10
+        do_capetau_land   = .false.
+        use_llift_criteria= .false.
+        do_ice            = .true.
+        atopevap  = 0.1
+        auto_rate = 1.e-3
+        auto_th   = 0.5e-3
+        frac      = 1.65
+        ttend_max = 0.005
+        EVAP_IN_DOWNDRAFTS  = 0.00
+        EVAP_IN_ENVIRON     = 0.00
+        ENTRAINED_INTO_MESO = 1.00
+        ANVIL_PRECIP_EFFICIENCY = 0.55
+        MESO_DOWN_EVAP_FRACTION = 0.4
+        MESO_UP_EVAP_FRACTION   = 0.05
+        wmin_ratio      = 0.05,
+        arat =  1.0, 0.26, 0.35, 0.32, 0.3, 0.54, 0.66
+        erat =  1.0, 1.30, 1.80, 2.50, 3.3, 4.50, 10.0
+        frc_internal_enthalpy_conserv = .true.
+        limit_pztm_to_tropo = .true.
+/
+
+&isccp_clouds_nml
+       do_sunlit_only = .false.
+/
+
+ &mg_drag_nml
+    gmax  = 1.,
+    acoef = 1.,
+    do_conserve_energy = .true.,
+    source_of_sgsmtn = 'input/computed'
+/
+
+ &microphys_rad_nml
+       do_orig_donner_stoch = .false.,
+       lwem_form = 'fuliou'
+/
+
+ &moist_processes_nml
+        do_lsc=.false., 
+        do_strat=.true.,
+        do_mca=.false., 
+        do_ras=.false., 
+        do_uw_conv=.false.,
+        do_donner_deep = .true.,
+        do_donner_mca  = .false.,
+        do_diag_clouds = .false.,
+        do_cmt=.false., 
+        cmt_mass_flux_source='donner',
+        do_rh_clouds = .false. ,
+        do_gust_cv = .false.,
+        do_liq_num = .true.,
+        force_donner_moist_conserv = .true.,
+        do_donner_conservation_checks = .true.,
+        do_limit_donner = .true.,
+        do_limit_uw = .true.,
+        limit_conv_cloud_frac = .true.,
+        do_donner_before_uw = .true.
+        include_donmca_in_cosp = .false.,
+/
+
+ &monin_obukhov_nml
+    stable_option =  2,
+    rich_crit = 1.0,
+    zeta_trans =  0.5
+/
+
+ &ocean_albedo_nml
+      ocean_albedo_option = 5
+/
+
+&ozone_nml
+       basic_ozone_type = 'time_varying' ,
+       ozone_dataset_entry = 1990, 1, 1, 0, 0, 0,
+       data_name = "ozone",
+       filename = "o3.climatology.nc"
+/
+
+&physics_driver_nml
+       do_radiation = .true.,
+       do_cosp      = .false.,
+       do_clubb     = 0
+/
+
+&ras_nml
+        aratio = 0.9,
+        modify_pbl=.true.
+        rn_frac_bot = 0.5,
+        rn_pbot = 800.0e2,
+        puplim =  500.0e02,
+        rn_ptop = 500.0e2,
+        rn_frac_top = 0.975,
+        Tokioka_on = .true.,
+        Tokioka_con = 0.025,
+        Tokioka_plim = 500.0e2,
+        cufric =.false.
+        do_rasdeep = .false.
+        do_fixed_pres_deep = .true.
+        prevent_unreasonable =.true.
+    a = 1.6851, 1.1686, 0.7663, 0.5255, 0.4100, 0.3677,
+        0.3151, 0.2216, 0.1521, 0.0750, 0.0000, 0.0000,
+        0.0000, 0.0000, 0.0000
+/
+
+&rh_based_clouds_nml
+       cirrus_cld_prop_form = 'part', 
+       cldht_type_form = '93'
+/
+
+ &sat_vapor_pres_nml
+       construct_table_wrt_liq = .true.,
+       construct_table_wrt_liq_and_ice = .true.,
+       use_exact_qs = .true.
+/
+
+ &scm_atmosphere_nml
+         kdim = 48,
+
+As=      1.00000,         2.69722,         5.17136,  
+            8.89455,       14.24790,       22.07157,   
+          33.61283,      50.48096,       74.79993,   
+        109.40055,     158.00460,     225.44108,   
+       317.89560,     443.19350,     611.11558,   
+       833.74392,    1125.83405,    1505.20759,   
+     1993.15829,    2614.86254,    3399.78420,   
+    4382.06240,    5600.87014,    7100.73115,   
+    8931.78242,   11149.97021,   13817.16841,   
+  17001.20930,   20775.81856,   23967.33875,   
+  25527.64563,   25671.22552,   24609.29622,   
+  22640.51220,   20147.13482,   17477.63530,   
+  14859.86462,   12414.92533,   10201.44191,   
+    8241.50255,    6534.43202,    5066.17865,   
+    3815.60705,    2758.60264,    1870.64631,   
+    1128.33931,     510.47983,       0.00000,   
+         0.00000,
+
+
+ Bs =  0.00000,       0.00000,       0.00000,   
+          0.00000,       0.00000,       0.00000,   
+          0.00000,       0.00000,       0.00000,   
+          0.00000,       0.00000,       0.00000,   
+          0.00000,       0.00000,       0.00000,   
+          0.00000,       0.00000,       0.00000,   
+          0.00000,       0.00000,       0.00000,   
+          0.00000,       0.00000,       0.00000,   
+          0.00000,       0.00000,       0.00000,   
+          0.00000,       0.00000,       0.01253,   
+          0.04887,       0.10724,       0.18455,   
+          0.27461,       0.36914,       0.46103,   
+          0.54623,       0.62305,       0.69099,   
+          0.75016,       0.80110,       0.84453,   
+          0.88127,       0.91217,       0.93803,   
+          0.95958,       0.97747,       0.99223,   
+          1.00000,
+
+         pdamp=0.0
+/
+
+&scm_forc_nml
+         experiment = 'vocals',
+         use_scm_rad = .false.,
+         do_specified_flux = .true.,
+
+/
+
+&scm_vocals_nml
+         fname_forc='INPUT/19810101.atmos_col_003.nc'
+         forc_begin_date = 1981, 1, 1, 0, 15, 0,
+         dt_forc         = 1800
+         n_forc_lon      = 1
+         n_forc_lat      = 1
+         n_forc_levels   = 48
+         n_forc_time     = 17520
+         do_nudging      = .false.
+         tao_nudge = 21600.0
+         avg_t1 = 1982, 7, 6, 5, 15, 0,
+         avg_t2 = 1981, 7, 6, 9, 15, 0,
+/
+
+&secondary_organics_nml
+         gas_conc_filename = 'gas_conc_3D.nc'
+/
+
+&simple_sulfate_nml
+  aerocom_emission_filename = 'aerocom_emission_2000_cr6_volc.nc'
+  aircraft_source='do_aircraft',
+    aircraft_filename='aero_aircraft_emission.nc',
+    aircraft_emission_name(1)='fuel'
+    so2_aircraft_EI=0.001
+  anthro_source='do_anthro',
+    anthro_emission_name(1)='so2_anthro_0.75',
+    anthro_emission_name(2)='so4_anthro_0.75',
+    anthro_filename='aero_anthro_emission_1979_2010.nc',
+    anthro_time_dependency_type='time_varying',
+    anthro_dataset_entry= 1980, 1, 1, 0, 0, 0,
+  biobur_source='do_biobur',
+    biobur_emission_name(1)='so2_biobur',
+    biobur_emission_name(2)='so4_biobur',
+    biobur_filename='aero_biobur_emission_1979_2010.nc',
+    biobur_time_dependency_type='time_varying',
+    biobur_dataset_entry= 1980, 1, 1, 0, 0, 0,
+  ship_source='do_ship',
+    ship_emission_name(1)='so2_ship'
+    ship_emission_name(2)='so4_ship'
+    ship_filename='aero_ship_emission_1979_2010.nc',
+    ship_time_dependency_type='time_varying',
+    ship_dataset_entry= 1980, 1, 1, 0, 0, 0
+    cont_volc_source = 'do_cont_volc',
+    cont_volc_time_dependency_type='constant',
+    cont_volc_filename='aerocom_emission_2000_cr6_volc.nc'
+    expl_volc_source = 'do_expl_volc',
+    expl_volc_time_dependency_type='constant',
+    expl_volc_filename='aerocom_emission_2000_cr6_volc.nc'
+/
+
+&ssalt_nml
+         coef_emis1 = 0.38,
+         coef_emis2 = 0.65
+/
+
+
+&statsnl
+vars_zt =
+'thlm', 'thvm', 'rtm', 'rcm', 'rvm', 'um', 'vm', 'um_ref','vm_ref','wm_zt', 'ug', 'vg',
+'cloud_frac', 'cloud_cover', 'rcm_in_layer', 'p_in_Pa', 'exner', 'rho_ds_zt', 'thv_ds_zt',
+'Lscale', 'T_in_K', 'rel_humidity', 'wp3', 'wpthlp2', 'wp2thlp', 'wprtp2', 'wp2rtp',
+'Lscale_up', 'Lscale_down', 'tau_zt', 'Kh_zt', 'wp2thvp', 'wp2rcp', 'wprtpthlp',
+'sigma_sqd_w_zt', 'rho', 'radht', 'radht_LW', 'radht_SW',
+'Ncm', 'Ncnm', 'Nim', 'snowslope', 'Nsnowm', 'Ngraupelm', 'sed_rcm', 'rsat',
+'rrainm' 'Nrm', 'm_vol_rad_rain', 'm_vol_rad_cloud', 
+'eff_rad_cloud', 'eff_rad_ice', 'eff_rad_snow', 'eff_rad_rain', 'eff_rad_graupel',
+'rain_rate_zt', 
+'rsnowm', 'ricem', 'rgraupelm',
+'diam', 'mass_ice_cryst', 'rcm_icedfs', 'u_T_cm',
+'rtm_bt', 'rtm_ma', 'rtm_ta', 'rtm_mfl', 'rtm_tacl', 'rtm_cl',
+'rtm_forcing', 'rtm_sdmp','rtm_mc', 'rtm_pd', 'rvm_mc', 'rcm_mc',
+'thlm_bt', 'thlm_ma', 'thlm_ta', 'thlm_mfl', 'thlm_tacl', 'thlm_cl',
+'thlm_forcing', 'thlm_sdmp','thlm_mc', 
+'thlm_old', 'thlm_without_ta',
+'thlm_mfl_min', 'thlm_mfl_max', 'thlm_enter_mfl', 'thlm_exit_mfl',
+'rtm_old', 'rtm_without_ta',
+'rtm_mfl_min', 'rtm_mfl_max', 'rtm_enter_mfl', 'rtm_exit_mfl',
+'um_bt', 'um_ma', 'um_gf', 'um_cf', 'um_ta', 'um_f', 'um_sdmp',
+'vm_bt', 'vm_ma', 'vm_gf', 'vm_cf', 'vm_ta', 'vm_f', 'vm_sdmp',
+'wp3_bt', 'wp3_ma', 'wp3_ta', 'wp3_tp', 'wp3_ac', 'wp3_bp1', 'wp3_bp2', 
+'wp3_pr1', 'wp3_pr2', 'wp3_dp1', 'wp3_4hd', 'wp3_cl',
+'rrainm_bt', 'rrainm_ma', 'rrainm_sd', 'rrainm_dff', 'rrainm_cond', 'rrainm_auto',
+'rrainm_accr', 'rrainm_cond_adj', 'rrainm_src_adj', 'rrainm_mc', 'rrainm_cl',
+'Nrm_bt', 'Nrm_ma', 'Nrm_sd', 'Nrm_dff', 'Nrm_cond', 'Nrm_auto',
+'Nrm_cond_adj', 'Nrm_src_adj', 'Nrm_mc', 'Nrm_cl',
+'Ncm_bt', 'Ncm_ma', 'Ncm_dff', 'Ncm_mc', 'Ncm_cl',
+'rsnowm_bt', 'rsnowm_ma', 'rsnowm_sd', 'rsnowm_dff', 'rsnowm_mc',
+'rsnowm_cl', 'ricem_bt', 'ricem_ma', 'ricem_sd', 'ricem_dff',
+'ricem_mc', 'ricem_cl', 'rgraupelm_bt', 'rgraupelm_ma',
+'rgraupelm_sd', 'rgraupelm_dff', 'rgraupelm_mc', 'rgraupelm_cl',
+'Nsnowm_bt', 'Nsnowm_mc', 'Nsnowm_dff', 'Nsnowm_ma', 'Nsnowm_sd', 'Nsnowm_cl', 
+'Nim_bt', 'Nim_mc', 'Nim_dff', 'Nim_ma', 'Nim_sd', 'Nim_cl', 
+'Ngraupelm_bt', 'Ngraupelm_mc', 'Ngraupelm_dff', 'Ngraupelm_ma', 'Ngraupelm_sd', 'Ngraupelm_cl', 
+'mixt_frac', 'w1', 'w2', 'varnce_w1', 'varnce_w2', 'thl1', 'thl2', 'varnce_thl1', 'varnce_thl2',
+'rt1', 'rt2', 'varnce_rt1', 'varnce_rt2', 'rc1', 'rc2', 'rsl1', 'rsl2', 
+'cloud_frac1', 'cloud_frac2',
+'s1', 's2', 'stdev_s1', 'stdev_s2', 'rrtthl',
+'wp2_zt', 'thlp2_zt', 'wpthlp_zt', 'wprtp_zt', 'rtp2_zt', 'rtpthlp_zt',
+'up2_zt', 'vp2_zt', 'upwp_zt', 'vpwp_zt',
+! To output a scalar variable result, 
+! follow the form <sclr_type> + <column_number> + <variable_type>
+!
+! Ex.   'sclr' + '1' + 'm_f' = 'sclr1m_f' 
+!
+!'sclr1m', 'sclr1m_f', 'sclr2m', 'sclr2m_f',
+!'edsclr1m', 'edsclr2m', 'edsclr1m_f', 'edsclr2m_f',
+''
+
+vars_zm = 
+'wp2', 'rtp2', 'thlp2', 'rtpthlp', 'wprtp', 'wpthlp', 'wp4', 'up2', 'vp2',
+'wpthvp', 'rtpthvp', 'thlpthvp', 'tau_zm', 'Kh_zm', 'wprcp', 'wm_zm',
+'thlprcp', 'rtprcp', 'rcp2', 'upwp', 'vpwp', 'rho_zm', 'sigma_sqd_w',
+'rho_ds_zm', 'thv_ds_zm', 'em', 'mean_w_up', 'mean_w_down', 'shear',
+'Frad', 'Frad_LW', 'Frad_SW', 'Frad_LW_up', 'Frad_SW_up', 'Frad_LW_down', 'Frad_SW_down',
+'Fprec', 'Fcsed', 'Vrr', 'VNr', 
+'wp2_bt', 'wp2_ma', 'wp2_ta', 'wp2_ac', 'wp2_bp', 'wp2_pr1', 'wp2_pr2',
+'wp2_pr3', 'wp2_dp1', 'wp2_dp2', 'wp2_4hd', 'wp2_cl', 'wp2_pd',
+'vp2_bt', 'vp2_ma', 'vp2_ta', 'vp2_tp', 'vp2_dp1', 'vp2_dp2', 
+'vp2_pr1', 'vp2_pr2', 'vp2_cl', 'vp2_pd',
+'up2_bt', 'up2_ma', 'up2_ta', 'up2_tp', 'up2_dp1', 'up2_dp2', 
+'up2_pr1', 'up2_pr2', 'up2_cl', 'up2_pd',
+'wprtp_bt', 'wprtp_ma', 'wprtp_ta', 'wprtp_tp', 'wprtp_ac', 
+'wprtp_bp', 'wprtp_pr1', 'wprtp_pr2', 'wprtp_pr3', 'wprtp_dp1', 
+'wprtp_mfl', 'wprtp_cl', 'wprtp_sicl', 'wprtp_pd',
+'wpthlp_bt', 'wpthlp_ma', 'wpthlp_ta', 'wpthlp_tp', 'wpthlp_ac', 
+'wpthlp_bp', 'wpthlp_pr1', 'wpthlp_pr2', 'wpthlp_pr3', 'wpthlp_dp1', 
+'wpthlp_mfl', 'wpthlp_cl', 'wpthlp_sicl',
+'rtp2_bt', 'rtp2_ma', 'rtp2_ta', 'rtp2_tp', 
+'rtp2_dp1', 'rtp2_dp2', 'rtp2_cl', 'rtp2_pd',
+'thlp2_bt', 'thlp2_ma', 'thlp2_ta', 'thlp2_tp',
+'thlp2_dp1', 'thlp2_dp2', 'thlp2_cl', 'thlp2_pd',
+'rtpthlp_bt', 'rtpthlp_ma', 'rtpthlp_ta', 'rtpthlp_tp1', 'rtpthlp_tp2',
+'rtpthlp_dp1', 'rtpthlp_dp2', 'rtpthlp_cl',
+'wpthlp_entermfl', 'wpthlp_exit_mfl', 'wprtp_enter_mfl', 'wprtp_exit_mfl',
+'wpthlp_mfl_min', 'wpthlp_mfl_max', 'wprtp_mfl_min', 'wprtp_mfl_max',
+!'sclr1prtp', 'sclr2prtp', 'sclr1p2', 'sclr2p2',
+!'sclr1pthvp', 'sclr2pthvp', 'sclr1pthlp', 'sclr2pthlp', 
+!'sclr1prcp', 'sclr2prcp', 'wpsclr1p', 'wpsclr2p', 
+!'wpsclr1p2', 'wpsclr2p2', 'wp2sclr1p', 'wp2sclr2p',
+!'wpsclr1prtp', 'wpsclr2prtp', 'wpsclr2pthlp', 'wpsclr1pthlp',
+!'wpedsclr1p', 'wpedsclr2p',
+''
+
+&initvars
+        C11  = 0.8
+        C11b = 0.8
+/
+
+ &strat_cloud_nml
+       use_online_aerosol = .false.,
+       U00 = 0.80,
+       U00_profile = .true.,
+       rthresh = 8.2,
+       Dmin = 1.0e-07,
+       n_land = 300.e6,
+       diff_thresh = 0.1,
+       mc_thresh = 0.001,
+       eros_scale = 1.3e-6,
+       eros_choice = .true.,
+       eros_scale_c = 7.e-5,
+       eros_scale_t = 7.e-5,
+       super_choice = .true.,
+       tracer_advec = .true.
+       vfact = 1.5
+       cfact = 1.0
+       do_liq_num = .true.
+       use_kk_auto = .false.
+       var_limit = 0.7
+       num_mass_ratio1 = 1.0
+       num_mass_ratio2 = 0.
+       use_sub_seasalt = .false.
+/
+
+
+ &surface_flux_nml
+       gust_min = 1.e-10
+/
+
+&topo_rough_nml
+         use_topo_rough    = .true.
+         max_topo_rough    = 100.0 
+         topo_rough_factor = 0.01
+/
+
+ &uw_closure_nml
+         rkfre    = 0.2
+         wcrit_min= 1.6
+/
+
+ &uw_conv_nml
+         use_online_aerosol = .false.,
+         iclosure        = 0, 
+         rkm_sh          = 13.5,
+         cldhgt_max      = 50.e3,
+         do_uwcmt        = .false.,
+         apply_tendency  = .true.,
+         wmin_ratio      = 0.05,
+         do_lands        = .false.
+         gama            = 0.0,
+         tke0            = 0.5
+         pblht0          = 500.
+         lofactor0       = 0.5
+         lochoice        = 10
+         do_rescale      = .true.
+         use_sub_seasalt = .false.
+         wrel_min=1.
+/
+
+&uw_plume_nml
+         rmaxfrac = 0.15
+         auto_th0 = 0.5e-3,
+         tcrit    = -50.0,
+         wmin     = 0.5,
+         deltaqc0 = 0.5e-3
+         do_pdfpcp= .false.
+         do_pmadjt= .true.
+         do_emmax = .true.
+         do_pnqv  = .true.
+/
+
+ &vert_turb_driver_nml
+     use_tau          = .false.,
+     gust_scheme      = 'beljaars',
+     do_mellor_yamada = .false.,
+     do_entrain       = .false.,
+     do_edt           = .false.,
+     do_diffusivity   = .false.,
+     do_stable_bl     = .false.,
+     do_shallow_conv  = .false.
+/
+
+ &xgrid_nml
+       make_exchange_reproduce = .true.,
+       interp_method = 'second_order'
+/

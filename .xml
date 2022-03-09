@@ -1,0 +1,49 @@
+<perldata>
+ <hashref memory_address="0x32d95d0">
+  <item key="FMScoupler">
+   <hashref memory_address="0x361b158">
+    <item key="codeBase">FMScoupler.git</item>
+    <item key="codeTag">2020.03</item>
+    <item key="sourceCsh">git clone --recursive -b 2020.01 https://github.com/NOAA-GFDL/atmos_drivers.git git clone --recursive -b xanadu http://gitlab.gfdl.noaa.gov/fms/atmos_phys.git git clone --recursive -b user/znt/scm_20201026 http://gitlab.gfdl.noaa.gov/fms/atmos_fv_dynamics.git git clone -q --recursive -b user/znt/scm_20210616 http://gitlab.gfdl.noaa.gov/fms/atmos_scm.git</item>
+    <item key="vcBrand">git</item>
+    <item key="vcRoot">https://github.com/NOAA-GFDL</item>
+   </hashref>
+  </item>
+  <item key="fms">
+   <hashref memory_address="0x2ccf870">
+    <item key="codeBase">FMS.git</item>
+    <item key="codeTag">main</item>
+    <item key="sourceCsh">( cd FMS &amp;&amp; git checkout 2020.03 )</item>
+    <item key="vcBrand">git</item>
+    <item key="vcRoot">https://github.com/NOAA-GFDL</item>
+   </hashref>
+  </item>
+  <item key="ice_sis">
+   <hashref memory_address="0x361b0c8">
+    <item key="codeBase">ice_sis.git ice_param.git</item>
+    <item key="codeTag">master</item>
+    <item key="sourceCsh">( cd ice_sis &amp;&amp; git checkout xanadu ) ( cd ice_param &amp;&amp; git checkout xanadu )</item>
+    <item key="vcBrand">git</item>
+    <item key="vcRoot">http://gitlab.gfdl.noaa.gov/fms</item>
+   </hashref>
+  </item>
+  <item key="land_null">
+   <hashref memory_address="0x361b578">
+    <item key="codeBase">land_null.git</item>
+    <item key="codeTag">master</item>
+    <item key="sourceCsh">( cd land_null &amp;&amp; git checkout xanadu )</item>
+    <item key="vcBrand">git</item>
+    <item key="vcRoot">http://gitlab.gfdl.noaa.gov/fms</item>
+   </hashref>
+  </item>
+  <item key="mom6">
+   <hashref memory_address="0x361b128">
+    <item key="codeBase">ocean_shared.git</item>
+    <item key="codeTag">master</item>
+    <item key="sourceCsh">git clone -b dev/gfdl/2018.04.06 https://github.com/NOAA-GFDL/MOM6-examples.git mom6 pushd mom6 git checkout dev/gfdl/2018.04.06 #needed for older git on zeus git submodule init src/MOM6 src/SIS2 src/icebergs tools/python/MIDAS git clone --recursive https://github.com/NOAA-GFDL/MOM6.git src/MOM6 git clone https://github.com/NOAA-GFDL/SIS2.git src/SIS2 git clone https://github.com/NOAA-GFDL/icebergs.git src/icebergs git submodule update #This gets the right version of submodules popd pushd mom6 set platform_domain = `perl -T -e &quot;use Net::Domain(hostdomain) ; print hostdomain&quot;` if (&quot;${platform_domain}&quot; =~ *&quot;fairmont.rdhpcs.noaa.gov&quot;* ) then ln -s /scratch4/GFDL/gfdlscr/pdata/gfdl_O/datasets/ .datasets else if (&quot;${platform_domain}&quot; =~ *&quot;ccs.ornl.gov&quot;* ) then ln -s /lustre/atlas/proj-shared/cli061/pdata/gfdl_O/datasets/ .datasets else ln -s /lustre/f2/pdata/gfdl/gfdl_O/datasets/ .datasets endif popd test -e mom6/.datasets if ($status != 0) then echo &quot;&quot;; echo &quot;&quot; ; echo &quot; WARNING: .datasets link in MOM6 examples directory is invalid&quot;; echo &quot;&quot;; echo &quot;&quot; endif</item>
+    <item key="vcBrand">git</item>
+    <item key="vcRoot">http://gitlab.gfdl.noaa.gov/fms</item>
+   </hashref>
+  </item>
+ </hashref>
+</perldata>
