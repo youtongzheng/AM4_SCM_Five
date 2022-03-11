@@ -502,7 +502,7 @@ subroutine update_atmos_model_down( Surface_boundary, Atmos )
     do blk = 1,Atm_block%nblks
       call five_tend_low_to_high(Physics%block(blk), Physics_tendency%block(blk), Rad_flux(1)%block(blk), &
                                 Physics_five%block(blk), Physics_tendency_five%block(blk), Rad_flux_five(1)%block(blk))
-      Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dir = Rad_flux(1)%block(blk)%flux_sw_down_vis_dir
+      Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dir = Rad_flux(1)%block(blk)%flux_sw_down_vis_dir !yzheng need to check
     enddo
 
 !---------------------------------------------------------------------
@@ -957,17 +957,32 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
 
 !---------- initialize physics -------
     call atmos_physics_driver_inputs (Physics, Atm_block)
-    call physics_driver_init(Atmos%Time,         &
-                             Atmos%lon_bnd(:,:), &
-                             Atmos%lat_bnd(:,:), &
-                             Atmos%lon(:,:),     &
-                             Atmos%lat(:,:),     &
-                             Atmos%axes,         &
-                             Atmos%Surf_diff,    &
-                             Exch_ctrl,          &
-                             Atm_block,          &
-                             Moist_clouds,       &
-                             Physics, Physics_tendency)
+    if (.not. do_five) then !yzheng
+      call physics_driver_init(Atmos%Time,         &
+                              Atmos%lon_bnd(:,:), &
+                              Atmos%lat_bnd(:,:), &
+                              Atmos%lon(:,:),     &
+                              Atmos%lat(:,:),     &
+                              Atmos%axes,         &
+                              Atmos%Surf_diff,    &
+                              Exch_ctrl,          &
+                              Atm_block,          &
+                              Moist_clouds,       &
+                              Physics, Physics_tendency)
+    else
+      call atmos_physics_driver_inputs_five (Physics_five, Atm_block) !yzheng
+      call physics_driver_init(Atmos%Time,         &
+                              Atmos%lon_bnd(:,:), &
+                              Atmos%lat_bnd(:,:), &
+                              Atmos%lon(:,:),     &
+                              Atmos%lat(:,:),     &
+                              Atmos%axes,         &
+                              Atmos%Surf_diff,    &
+                              Exch_ctrl,          &
+                              Atm_block,          &
+                              Moist_clouds,       &
+                              Physics, Physics_tendency, Physics_five) !yzheng
+    end if
 !--- need to return tracer values back to dy-core
 !--- because tracer initilization inside of physics
 !--- can reset initial values when they are unset

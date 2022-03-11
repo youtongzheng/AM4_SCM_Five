@@ -618,7 +618,8 @@ type(precip_flux_type)              :: Precip_flux
 subroutine physics_driver_init (Time, lonb, latb, lon, lat, axes, &
                                 Surf_diff, Exch_ctrl, Atm_block,   &
                                 Moist_clouds, Physics, Physics_tendency, &
-                                diffm, difft)
+                                diffm, difft, &
+                                Physics_five) !yzheng 
 
 !---------------------------------------------------------------------
 !    physics_driver_init is the constructor for physics_driver_mod.
@@ -635,6 +636,7 @@ type(clouds_from_moist_type), intent(inout) :: Moist_clouds(:)
 type(physics_type),           intent(inout) :: Physics
 type(physics_tendency_type),  intent(inout) :: Physics_tendency
 real,    dimension(:,:,:),    intent(out),  optional :: diffm, difft
+type(physics_type),           intent(inout),  optional :: Physics_five
 
 !---------------------------------------------------------------------
 !  intent(in) variables:
@@ -949,11 +951,19 @@ real,    dimension(:,:,:),    intent(out),  optional :: diffm, difft
         ibe = Atm_block%ibe(nb)-Atm_block%isc+1
         jbs = Atm_block%jbs(nb)-Atm_block%jsc+1
         jbe = Atm_block%jbe(nb)-Atm_block%jsc+1
-        trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics%block(nb)%q
-        trs(ibs:ibe,jbs:jbe,:,ntp+1:nt) = Physics%block(nb)%tmp_4d
-        phalf(ibs:ibe,jbs:jbe,:)        = Physics%block(nb)%p_half
-!--- the 'temp' variable inside of Physics is no longer needed - deallocate it
-        deallocate(Physics%block(nb)%tmp_4d)
+        if (.not. do_five) then
+          trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics%block(nb)%q !yzheng need to change
+          trs(ibs:ibe,jbs:jbe,:,ntp+1:nt) = Physics%block(nb)%tmp_4d
+          phalf(ibs:ibe,jbs:jbe,:)        = Physics%block(nb)%p_half
+  !--- the 'temp' variable inside of Physics is no longer needed - deallocate it
+          deallocate(Physics%block(nb)%tmp_4d)
+        else
+          trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics_five%block(nb)%q !yzheng need to change
+          trs(ibs:ibe,jbs:jbe,:,ntp+1:nt) = Physics_five%block(nb)%tmp_4d
+          phalf(ibs:ibe,jbs:jbe,:)        = Physics_five%block(nb)%p_half
+  !--- the 'temp' variable inside of Physics is no longer needed - deallocate it
+          deallocate(Physics_five%block(nb)%tmp_4d)
+        end if
       enddo
 
 !-----------------------------------------------------------------------
@@ -1082,6 +1092,7 @@ real,    dimension(:,:,:),    intent(out),  optional :: diffm, difft
 !-----------------------------------------------------------------------
      call error_mesg('physics_driver_mod', 'number of cloud schemes found = '//trim(string(Exch_ctrl%ncld)), NOTE)
 
+     !yzheng
      call alloc_clouds_from_moist_type(Moist_clouds, Exch_ctrl, Atm_block, &
                                         do_five, nlev_five)
 
