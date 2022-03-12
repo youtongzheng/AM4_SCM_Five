@@ -719,12 +719,27 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
 
     do j=1,nlon
       do i=1,mlat
-        
-        call masswgt_vert_avg(rho_host(i,j,:),rho_five0(i,j,:),delz_host(i,j,:),delz_five0(i,j,:),&
-        p_half_host(i,j,:),p_full_five0(i,j,:),p_full_host(i,j,:), varin(i,j,:),varout(i,j,:))
+          call masswgt_vert_avg(rho_host(i,j,:),rho_five0(i,j,:),delz_host(i,j,:),delz_five0(i,j,:),&
+          p_half_host(i,j,:),p_full_five0(i,j,:),p_full_host(i,j,:), varin(i,j,:),varout(i,j,:))
       enddo
     enddo
   end subroutine five_var_high_to_low
+
+  subroutine five_var_high_to_low_4d (varin, varout)
+    #include "fv_arrays.h"
+
+    real, dimension(:,:,:,:), intent(in)  :: varin
+    real, dimension(:,:,:,:), intent(out) :: varout
+
+    do j=1,nlon
+      do i=1,mlat
+        do p = 1, size(varin, 4)
+          call masswgt_vert_avg(rho_host(i,j,:),rho_five0(i,j,:),delz_host(i,j,:),delz_five0(i,j,:),&
+          p_half_host(i,j,:),p_full_five0(i,j,:),p_full_host(i,j,:), varin(i,j,:,p),varout(i,j,:,p))
+        enddo
+      enddo
+    enddo
+  end subroutine five_var_high_to_low_4d
 
 subroutine five_pressure_init(ph0, ak,bk,ps0, nlev_five)
 

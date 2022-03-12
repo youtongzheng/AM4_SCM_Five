@@ -158,7 +158,7 @@ use monin_obukhov_mod,        only: monin_obukhov_init
 !yzheng
 use five_mod, only: nlev_five, do_five
 ! use five_mod, only: diff_cu_mo_five, diff_t_five, diff_m_five, radturbten_five, diff_t_clubb_five
-use five_mod, only: five_var_high_to_low
+use five_mod, only: five_var_high_to_low_4d
 
 #ifdef SCM
 ! Option to add SCM radiative tendencies from forcing to lw_tendency
@@ -1242,7 +1242,7 @@ type(physics_type),           intent(inout),  optional :: Physics_five
           Physics%block(nb)%q = trs(ibs:ibe,jbs:jbe,:,1:ntp)
           Physics_tendency%block(nb)%qdiag = trs(ibs:ibe,jbs:jbe,:,ntp+1:nt)
         else
-          call five_var_high_to_low(trs(is:ie,js:je,:), trs_tmp(is:ie,js:je,:))
+          call five_var_high_to_low_4d(trs(ibs:ibe,jbs:jbe,:,:), trs_tmp(ibs:ibe,jbs:jbe,:,:))
           Physics%block(nb)%q = trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
           Physics_tendency%block(nb)%qdiag = trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
         end if
