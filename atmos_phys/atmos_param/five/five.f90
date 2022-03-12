@@ -74,7 +74,7 @@ use             fms_mod, only: open_namelist_file
 
     character(len=128) :: version = '$Id$'
     character(len=128) :: tagname = '$Name$'
-    
+
     !------------------------------------------------------------------------
     !---namelist-------------------------------------------------------------
     !------------------------------------------------------------------------
@@ -725,72 +725,6 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
       enddo
     enddo
   end subroutine five_var_high_to_low
-
-
-!   subroutine atmosphere_state_update_five (Time, Physics_tendency, Physics, Atm_block)
-!     type(time_type),              intent(in) :: Time
-!     type (physics_tendency_type), intent(in) :: Physics_tendency
-!     type (physics_type),          intent(in) :: Physics
-!     type (block_control_type),    intent(in) :: Atm_block
-!     type(time_type) :: Time_next, Time_step
-!  !--- local variables ---
-!     integer:: ibs, ibe, jbs, jbe, nb, nt_tot, nt_prog
-!     real:: zvir
-! #include "fv_point.inc"
-    
-!     Time_step = set_time(int(dt_atmos), 0)
-!     Time_next = Time + Time_step
-!     zvir = rvgas/rdgas - 1.
-    
-!     call get_number_tracers(MODEL_ATMOS, num_tracers=nt_tot, num_prog=nt_prog)  
-!  !--- put u/v tendencies into haloed arrays u_dt and v_dt
-!  !$OMP parallel do default(shared) private(nb, ibs, ibe, jbs, jbe)
-!     do nb = 1,Atm_block%nblks
-!       ibs = Atm_block%ibs(nb)
-!       ibe = Atm_block%ibe(nb)
-!       jbs = Atm_block%jbs(nb)
-!       jbe = Atm_block%jbe(nb)
- 
-
-!      u_dt_five(ibs:ibe,jbs:jbe,:)   = Physics_tendency%block(nb)%u_dt
-!      v_dt_five(ibs:ibe,jbs:jbe,:)   = Physics_tendency%block(nb)%v_dt
-!      t_dt_five(ibs:ibe,jbs:jbe,:)   = Physics_tendency%block(nb)%t_dt
-!      q_dt_five(ibs:ibe,jbs:jbe,:,1:nt_prog) = Physics_tendency%block(nb)%q_dt
-
-! !--- diagnostic tracers are being updated in-place
-! !--- tracer fields must be returned to the Atm structure
-!      q_five(ibs:ibe,jbs:jbe,:,nt_prog+1:ncnst) = Physics_tendency%block(nb)%qdiag
-
-!     enddo
-  
-!     call prog_var_time_diff_five (dt_atmos)
-  
-!   end subroutine atmosphere_state_update_five
-
-!   subroutine prog_var_time_diff_five (dt, nt)
-!        real,                intent(in)    :: dt
-!        integer, optional,   intent(in)    :: nt
-    
-!        integer :: ntp, n, nt_tot, nt_prog
-!     #include "fv_point.inc"
-!       call get_number_tracers(MODEL_ATMOS, num_tracers=nt_tot, num_prog=nt_prog)  
-
-!        ntp = nt_prog
-!        if (present(nt)) ntp = min(nt_prog, nt)
-    
-!       ua_five = ua_five + dt * u_dt_five
-!       va_five = va_five + dt * v_dt_five
-!       pt_five = pt_five + dt * t_dt_five
-!       q_five(:,:,:,1:ntp) = q_five(:,:,:,1:ntp) + &
-!                                 dt * q_dt_five(:,:,:,1:ntp)
-    
-!     !----- zero out tendencies -----
-!        u_dt_five = 0.0
-!        v_dt_five = 0.0
-!        t_dt_five = 0.0
-!        q_dt_five(:,:,:,1:ntp) = 0.0
-    
-!   end subroutine prog_var_time_diff_five
 
 subroutine five_pressure_init(ph0, ak,bk,ps0, nlev_five)
 
