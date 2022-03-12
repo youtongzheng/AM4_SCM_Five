@@ -1245,6 +1245,9 @@ type(physics_type),           intent(inout),  optional :: Physics_five
           call five_var_high_to_low_4d(trs(ibs:ibe,jbs:jbe,:,:), trs_tmp(ibs:ibe,jbs:jbe,:,:))
           Physics%block(nb)%q = trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
           Physics_tendency%block(nb)%qdiag = trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
+
+          write (*,*) 'q do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
+          write (*,*) 'qdiag do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
         end if
       enddo
       deallocate (trs, phalf)
