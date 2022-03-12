@@ -40,7 +40,7 @@ use             fms_mod, only: open_namelist_file
 
     public five_init, atmos_physics_driver_inputs_five, &
                       five_tend_low_to_high, five_tend_high_to_low, &
-                      five_var_high_to_low, &
+                      five_var_high_to_low_4d, &
                       update_bomex_forc_five
                       ! atmosphere_state_update_five
 
