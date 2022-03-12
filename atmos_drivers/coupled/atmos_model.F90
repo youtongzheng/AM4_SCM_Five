@@ -981,7 +981,7 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
                               Exch_ctrl,          &
                               Atm_block,          &
                               Moist_clouds,       &
-                              Physics, Physics_tendency, Physics_five) !yzheng
+                              Physics, Physics_tendency, Physics_five = Physics_five) !yzheng
     end if
 !--- need to return tracer values back to dy-core
 !--- because tracer initilization inside of physics
