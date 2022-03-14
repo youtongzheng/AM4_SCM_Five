@@ -959,7 +959,7 @@ type(physics_type),           intent(inout),  optional :: Physics_five
         jbs = Atm_block%jbs(nb)-Atm_block%jsc+1
         jbe = Atm_block%jbe(nb)-Atm_block%jsc+1
         if (.not. do_five) then
-          trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics%block(nb)%q !yzheng need to change
+          trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics%block(nb)%q
           trs(ibs:ibe,jbs:jbe,:,ntp+1:nt) = Physics%block(nb)%tmp_4d
           phalf(ibs:ibe,jbs:jbe,:)        = Physics%block(nb)%p_half
   !--- the 'temp' variable inside of Physics is no longer needed - deallocate it
@@ -1242,7 +1242,7 @@ type(physics_type),           intent(inout),  optional :: Physics_five
           Physics%block(nb)%q = trs(ibs:ibe,jbs:jbe,:,1:ntp)
           Physics_tendency%block(nb)%qdiag = trs(ibs:ibe,jbs:jbe,:,ntp+1:nt)
         else
-          call five_var_high_to_low_4d(trs(ibs:ibe,jbs:jbe,:,:), trs_tmp(ibs:ibe,jbs:jbe,:,:))
+          call five_var_high_to_low_4d(trs(ibs:ibe,jbs:jbe,:,:), Physics%block(nb), Physics_five%block(nb), trs_tmp(ibs:ibe,jbs:jbe,:,:))
           Physics%block(nb)%q = trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
           Physics_tendency%block(nb)%qdiag = trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
 

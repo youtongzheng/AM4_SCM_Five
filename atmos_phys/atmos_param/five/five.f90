@@ -417,12 +417,6 @@ subroutine atmos_physics_driver_inputs_five (Physics_five, Atm_block, Physics_te
   endif
 
   write (*,*) 'omga_five from input_five', omga_five
-  ! write (*,*) 'peln_five', peln_five
-  ! write (*,*) 'Physics_five p_full', Physics_five%block(nb)%p_full
-  ! write (*,*) 'Physics_five p_half', Physics_five%block(nb)%p_half
-  ! write (*,*) 'Physics_five z_full', Physics_five%block(nb)%z_full
-  ! write (*,*) 'Physics_five z_half', Physics_five%block(nb)%z_half
-
   enddo
 
 end subroutine atmos_physics_driver_inputs_five
@@ -488,23 +482,23 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     r_dt_five0 => Physics_tendency_five_block%q_dt
     rdiag_five0 => Physics_tendency_five_block%qdiag
 
-    do k=1,nlev
-      do j=1,nlon
-        do i=1,mlat
-          delz_host(i,j,k) = z_half_host(i,j,k) - z_half_host(i,j,k+1)
-          rho_host(i,j,k) = delp_host(i,j,k)/(delz_host(i,j,k)*grav)
-        enddo
-      enddo
-    enddo
+    ! do k=1,nlev
+    !   do j=1,nlon
+    !     do i=1,mlat
+    !       delz_host(i,j,k) = z_half_host(i,j,k) - z_half_host(i,j,k+1)
+    !       rho_host(i,j,k) = delp_host(i,j,k)/(delz_host(i,j,k)*grav)
+    !     enddo
+    !   enddo
+    ! enddo
   
-    do k=1,nlev_five
-      do j=1,nlon
-        do i=1,mlat
-          delz_five0(i,j,k) = z_half_five0(i,j,k) - z_half_five0(i,j,k+1)
-          rho_five0(i,j,k) = delp_five0(i,j,k)/(delz_five0(i,j,k)*grav)
-        enddo
-      enddo
-    enddo
+    ! do k=1,nlev_five
+    !   do j=1,nlon
+    !     do i=1,mlat
+    !       delz_five0(i,j,k) = z_half_five0(i,j,k) - z_half_five0(i,j,k+1)
+    !       rho_five0(i,j,k) = delp_five0(i,j,k)/(delz_five0(i,j,k)*grav)
+    !     enddo
+    !   enddo
+    ! enddo
 
     call get_number_tracers(MODEL_ATMOS, num_tracers=nt_tot, num_prog=nt_prog)
   
@@ -634,25 +628,6 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     r_dt_five0 => Physics_tendency_five_block%q_dt
     rdiag_five0 => Physics_tendency_five_block%qdiag
   
-    ! do k=1,nlev
-    !   do j=1,nlon
-    !     do i=1,mlat
-    !       delz_host(i,j,k) = z_half_host(i,j,k) - z_half_host(i,j,k+1)
-    !       rho_host(i,j,k) = delp_host(i,j,k)/(delz_host(i,j,k)*grav)
-    !     enddo
-    !   enddo
-    ! enddo
-  
-    ! do k=1,nlev_five
-    !   do j=1,nlon
-    !     do i=1,mlat
-    !       delz_five0(i,j,k) = z_half_five0(i,j,k) - z_half_five0(i,j,k+1)
-    !       rho_five0(i,j,k) = delp_five0(i,j,k)/(delz_five0(i,j,k)*grav)
-    !     enddo
-    !   enddo
-    ! enddo
-  
-    ! print "(*(f15.5,','))", z_full_host(1,1,:) 
     call get_number_tracers(MODEL_ATMOS, num_tracers=nt_tot, num_prog=nt_prog)
 
     do j=1,nlon
@@ -681,9 +656,6 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
       enddo
   
     enddo
-  
-    ! print *, t_dt_five0(1,1,:)
-    ! print *, t_dt_host(1,1,:)
   
     u_host => null()
     v_host => null()
@@ -725,17 +697,50 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     enddo
   end subroutine five_var_high_to_low
 
-  subroutine five_var_high_to_low_4d (varin, varout)
+  subroutine five_var_high_to_low_4d (varin, Physics_input_block, Physics_five_input_block, varout)
     #include "fv_arrays.h"
 
     real, dimension(:,:,:,:), intent(in)  :: varin
     real, dimension(:,:,:,:), intent(out) :: varout
+    type(physics_input_block_type), intent(in)      :: Physics_five_input_block
+    type(physics_input_block_type), intent(in)      :: Physics_input_block
+    
+    real, dimension(:,:,:), pointer :: z_half_host, z_half_five0
+
+    p_full_host = Physics_input_block%p_full
+    p_half_host = Physics_input_block%p_half
+    p_full_five0 = Physics_five_input_block%p_full
+
+    z_half_host => Physics_input_block%z_half
+    z_half_five0 => Physics_five_input_block%z_half
+
+    do k=1,nlev
+      do j=1,nlon
+        do i=1,mlat
+          delz_host(i,j,k) = z_half_host(i,j,k) - z_half_host(i,j,k+1)
+          rho_host(i,j,k) = delp_host(i,j,k)/(delz_host(i,j,k)*grav)
+        enddo
+      enddo
+    enddo
+  
+    do k=1,nlev_five
+      do j=1,nlon
+        do i=1,mlat
+          delz_five0(i,j,k) = z_half_five0(i,j,k) - z_half_five0(i,j,k+1)
+          rho_five0(i,j,k) = delp_five0(i,j,k)/(delz_five0(i,j,k)*grav)
+        enddo
+      enddo
+    enddo
 
     do j=1,nlon
       do i=1,mlat
         do p = 1, size(varin, 4)
           call masswgt_vert_avg(rho_host(i,j,:),rho_five0(i,j,:),delz_host(i,j,:),delz_five0(i,j,:),&
           p_half_host(i,j,:),p_full_five0(i,j,:),p_full_host(i,j,:), varin(i,j,:,p),varout(i,j,:,p))
+
+          write (*,*) 'varin five_var_high_to_low', varin(i,j,:,p)
+          write (*,*) 'varout five_var_high_to_low', varout(i,j,:,p)
+
         enddo
       enddo
     enddo
