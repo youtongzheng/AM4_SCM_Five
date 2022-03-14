@@ -705,7 +705,7 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     type(physics_input_block_type), intent(in)      :: Physics_five_input_block
     type(physics_input_block_type), intent(in)      :: Physics_input_block
     
-    real, dimension(:,:,:), pointer :: z_half_host, z_half_five0
+    real, dimension(:,:,:), pointer :: z_half_host, z_half_five0, delp_host,delp_five0
 
     p_full_host = Physics_input_block%p_full
     p_half_host = Physics_input_block%p_half
@@ -713,6 +713,8 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
 
     z_half_host => Physics_input_block%z_half
     z_half_five0 => Physics_five_input_block%z_half
+    delp_host => Physics_input_block%delp
+    delp_five0 => Physics_five_input_block%delp
 
     do k=1,nlev
       do j=1,nlon
