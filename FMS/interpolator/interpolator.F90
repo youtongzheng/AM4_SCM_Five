@@ -137,7 +137,8 @@ use time_manager_mod,  only : time_type,   &
                               decrement_time
 use time_interp_mod,   only : time_interp, YEAR
 use constants_mod,     only : grav, PI, SECONDS_PER_DAY
-
+                       
+use five_mod, only: nlev_five, do_five !yzheng
 !--------------------------------------------------------------------
 
 implicit none
@@ -640,7 +641,11 @@ endif
 clim_type%level_type = 0
 clim_type%vertical_indices = 0
 if(dimension_exists(fileobj, "pfull")) then
-   call get_dimension_size(fileobj, "pfull", nlev)
+   if (.not. do_five) then !yzheng
+    call get_dimension_size(fileobj, "pfull", nlev)
+   else
+    nlev = nlev_five
+   end if
    allocate(clim_type%levs(nlev))
    call get_axis_level_data(fileobj, 'pfull', clim_type%levs, clim_type%level_type, clim_type%vertical_indices)
 else if(dimension_exists(fileobj, "sigma_full")) then
