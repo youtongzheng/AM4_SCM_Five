@@ -60,9 +60,6 @@ use              constants_mod, only : PI, GRAV, RDGAS, WTMAIR, PSTD_MKS
 use cloud_chem, only : cloud_so2_chem, CLOUD_CHEM_LEGACY, CLOUD_CHEM_F1P, &
                        CLOUD_CHEM_F1P_BUG, CLOUD_CHEM_F1P_BUG2    ! h1g, 2016-09-07
 
-                       !yzheng
-use five_mod, only: nlev_five, do_five
-
 implicit none
 
 private
