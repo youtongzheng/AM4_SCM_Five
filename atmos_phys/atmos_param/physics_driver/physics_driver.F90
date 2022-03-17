@@ -3017,10 +3017,10 @@ integer :: moist_processes_term_clock, damping_term_clock, turb_term_clock, &
         call moist_processes_end ()
         call mpp_clock_end ( moist_processes_term_clock )
       endif
-
-      call mpp_clock_begin ( tracer_term_clock )
-      call atmos_tracer_driver_end
-      call mpp_clock_end ( tracer_term_clock )
+      !yzheng to test the errors
+      ! call mpp_clock_begin ( tracer_term_clock )
+      ! call atmos_tracer_driver_end
+      ! call mpp_clock_end ( tracer_term_clock )
       call mpp_clock_begin ( damping_term_clock )
       call damping_driver_end
       call mpp_clock_end ( damping_term_clock )

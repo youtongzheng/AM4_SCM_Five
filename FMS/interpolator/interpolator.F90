@@ -7290,7 +7290,7 @@ if (associated (clim_type%latb    )) deallocate(clim_type%latb)
 if (associated (clim_type%lonb    )) deallocate(clim_type%lonb)
 !yzheng
 write(*,*) 'clim_type%levs', clim_type%levs
-write(*,*) 'clim_type%levs', clim_type%halflevs
+write(*,*) 'clim_type%halflevs', clim_type%halflevs
 if (associated (clim_type%levs    )) deallocate(clim_type%levs)
 if (associated (clim_type%halflevs)) deallocate(clim_type%halflevs)
 call horiz_interp_del(clim_type%interph)
