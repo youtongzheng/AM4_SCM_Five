@@ -658,6 +658,7 @@ else
    clim_type%levs = 0.0
 endif
 !yzheng
+write(*,*) 'clim_type nlev', nlev
 write(*,*) 'clim_type%levs', clim_type%levs
 
 !--- get clim_type%halflevs
@@ -7289,7 +7290,7 @@ if (associated (clim_type%latb    )) deallocate(clim_type%latb)
 if (associated (clim_type%lonb    )) deallocate(clim_type%lonb)
 !yzheng
 write(*,*) 'clim_type%levs', clim_type%levs
-if (associated (clim_type%levs    )) deallocate(clim_type%levs)
+!if (associated (clim_type%levs    )) deallocate(clim_type%levs) by yzheng to test, this should be checked futher
 if (associated (clim_type%halflevs)) deallocate(clim_type%halflevs)
 call horiz_interp_del(clim_type%interph)
 if (associated (clim_type%time_slice)) deallocate(clim_type%time_slice)
