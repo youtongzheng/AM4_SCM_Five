@@ -969,7 +969,7 @@ type(physics_type),           intent(inout),  optional :: Physics_five
           write(*,*) 'Physics_five%block(nb)%q', Physics_five%block(nb)%q
           write(*,*) 'Physics_five%block(nb)%tmp_4d', Physics_five%block(nb)%tmp_4d
           write(*,*) 'Physics_five%block(nb)%p_half', Physics_five%block(nb)%p_half
-          
+
           trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics_five%block(nb)%q !yzheng need to change
           trs(ibs:ibe,jbs:jbe,:,ntp+1:nt) = Physics_five%block(nb)%tmp_4d
           phalf(ibs:ibe,jbs:jbe,:)        = Physics_five%block(nb)%p_half
@@ -3022,10 +3022,10 @@ integer :: moist_processes_term_clock, damping_term_clock, turb_term_clock, &
         call moist_processes_end ()
         call mpp_clock_end ( moist_processes_term_clock )
       endif
-      !yzheng to test the errors
-      ! call mpp_clock_begin ( tracer_term_clock )
-      ! call atmos_tracer_driver_end
-      ! call mpp_clock_end ( tracer_term_clock )
+
+      call mpp_clock_begin ( tracer_term_clock )
+      call atmos_tracer_driver_end
+      call mpp_clock_end ( tracer_term_clock )
       call mpp_clock_begin ( damping_term_clock )
       call damping_driver_end
       call mpp_clock_end ( damping_term_clock )
