@@ -134,7 +134,10 @@ use             fms_mod, only: open_namelist_file
 
 
     real, allocatable :: pref_five(:,:), dum1d(:)
-
+    real, parameter::ptop_min = 1.E-6  ! minimum pressure (pa) at model top to avoid
+    ! floating point exception; this is not needed
+    ! if model top is not at zero
+    
     !------------------------------------------------------------------------
     !------ constants-------
     !-----------------------------------------------------------------------
@@ -702,14 +705,55 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     pref_five(nlev_five+1,1) = 101325.
     pref_five(nlev_five+1,2) = 81060.
 
-    call get_eta_level ( nlev_five, pref_five(nlev+1,1), pref_five(1,1), dum1d )
-    call get_eta_level ( nlev_five, pref_five(nlev+1,2), pref_five(1,2), dum1d )
+    call get_eta_level_five ( nlev_five, pref_five(nlev+1,1), pref_five(1,1), dum1d )
+    call get_eta_level_five ( nlev_five, pref_five(nlev+1,2), pref_five(1,2), dum1d )
   
     write (*,*) 'pref_five', pref_five
     
     p_ref_five = pref_five
 
   end subroutine atmosphere_pref_five
+
+  !-----------------------------------------------------------------------
+
+ subroutine get_eta_level_five(km, p_s, pf, ph, pscale)
+
+  integer, intent(in) :: km
+  real, intent(in)  :: p_s            ! unit: pascal
+  real, intent(out) :: pf(km)
+  real, intent(out) :: ph(km+1)
+  real, intent(in), optional :: pscale
+
+  integer k
+  real    ak1
+
+  if(nlev_five /= km)  &
+  call error_mesg('get_eta_level:','dimensionally inconsistent', FATAL)
+
+     ph(1) = ak_five (1)
+  do k=2,nlev_five+1
+     ph(k) = ak_five (k) + ak_five(k)*p_s
+  enddo
+
+  if ( present(pscale) ) then
+      do k=1,nlev_five+1
+         ph(k) = pscale*ph(k)
+      enddo
+  endif
+
+  if( ak_five(1) > ptop_min ) then
+     pf(1) = (ph(2) - ph(1)) / log(ph(2)/ph(1))
+  else
+     ak1 = (kappa + 1.) / kappa
+     pf(1) = (ph(2) - ph(1)) / ak1
+!    if(master) write(*,*) 'Modified p_full(1)=',pf(1), 0.5*(ph(1)+ph(2))
+  endif
+
+  do k=2,nlev_five
+     pf(k) = (ph(k+1) - ph(k)) / log(ph(k+1)/ph(k))
+  enddo
+
+ end subroutine get_eta_level_five
 
   subroutine five_var_high_to_low (varin, varout)
     #include "fv_arrays.h"
