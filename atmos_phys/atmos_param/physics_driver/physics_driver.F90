@@ -965,20 +965,16 @@ type(physics_type),           intent(inout),  optional :: Physics_five
   !--- the 'temp' variable inside of Physics is no longer needed - deallocate it
           deallocate(Physics%block(nb)%tmp_4d)
         else
-          trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics%block(nb)%q
-          trs(ibs:ibe,jbs:jbe,:,ntp+1:nt) = Physics%block(nb)%tmp_4d
-          phalf(ibs:ibe,jbs:jbe,:)        = Physics%block(nb)%p_half
-  !--- the 'temp' variable inside of Physics is no longer needed - deallocate it
-          deallocate(Physics%block(nb)%tmp_4d)
 
           write(*,*) 'Physics_five%block(nb)%q', Physics_five%block(nb)%q
           write(*,*) 'Physics_five%block(nb)%tmp_4d', Physics_five%block(nb)%tmp_4d
           write(*,*) 'Physics_five%block(nb)%p_half', Physics_five%block(nb)%p_half
-  !         trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics_five%block(nb)%q !yzheng need to change
-  !         trs(ibs:ibe,jbs:jbe,:,ntp+1:nt) = Physics_five%block(nb)%tmp_4d
-  !         phalf(ibs:ibe,jbs:jbe,:)        = Physics_five%block(nb)%p_half
-  ! !--- the 'temp' variable inside of Physics is no longer needed - deallocate it
-  !         deallocate(Physics_five%block(nb)%tmp_4d)
+          
+          trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics_five%block(nb)%q !yzheng need to change
+          trs(ibs:ibe,jbs:jbe,:,ntp+1:nt) = Physics_five%block(nb)%tmp_4d
+          phalf(ibs:ibe,jbs:jbe,:)        = Physics_five%block(nb)%p_half
+  !--- the 'temp' variable inside of Physics is no longer needed - deallocate it
+          deallocate(Physics_five%block(nb)%tmp_4d)
         end if
       enddo
 

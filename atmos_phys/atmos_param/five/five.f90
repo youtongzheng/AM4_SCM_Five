@@ -284,6 +284,7 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
                 Physics_five%block(n)%z_half (ix,jx,npz+1)        )
 
         Physics_five%block(n)%phis   = 0.
+        Physics_five%block(n)%tmp_4d   = 0.
         Physics_five%block(n)%u      = 0.
         Physics_five%block(n)%v      = 0.
         Physics_five%block(n)%w      = 0.
@@ -395,6 +396,8 @@ subroutine atmos_physics_driver_inputs_five (Physics_five, Atm_block, Physics_te
   Physics_five%block(nb)%pe   = pe_five(ibs:ibe,:,jbs:jbe)
   Physics_five%block(nb)%peln = peln_five(ibs:ibe,:,jbs:jbe)
   Physics_five%block(nb)%delp = delp_five(ibs:ibe,jbs:jbe,:)
+  if (_ALLOCATED(Physics_five%block(nb)%tmp_4d)) &
+  Physics_five%block(nb)%tmp_4d = q_five(ibs:ibe,jbs:jbe,:,nt_prog+1:ncnst)
 
   !   Compute heights
   call fv_compute_p_z (nlev_five, Physics_five%block(nb)%phis, Physics_five%block(nb)%pe, &
