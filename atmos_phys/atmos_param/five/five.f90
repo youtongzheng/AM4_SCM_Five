@@ -1,4 +1,6 @@
 module five_mod
+#include <fms_platform.h>
+
 use physics_types_mod,  only: physics_tendency_type, physics_type, &
                               physics_input_block_type, physics_tendency_block_type
 ! use atmosphere_mod,  only: dt_atmos
@@ -387,39 +389,39 @@ subroutine atmos_physics_driver_inputs_five (Physics_five, Atm_block, Physics_te
       jbs = Atm_block%jbs(nb)
       jbe = Atm_block%jbe(nb)
 
-  Physics_five%block(nb)%phis = phis_five(ibs:ibe,jbs:jbe)
-  Physics_five%block(nb)%u    = ua_five(ibs:ibe,jbs:jbe,:)
-  Physics_five%block(nb)%v    = va_five(ibs:ibe,jbs:jbe,:)
-  Physics_five%block(nb)%t    = pt_five(ibs:ibe,jbs:jbe,:)
-  Physics_five%block(nb)%q    = q_five(ibs:ibe,jbs:jbe,:,1:nt_prog)
-  Physics_five%block(nb)%omega= omga_five(ibs:ibe,jbs:jbe,:)
-  Physics_five%block(nb)%pe   = pe_five(ibs:ibe,:,jbs:jbe)
-  Physics_five%block(nb)%peln = peln_five(ibs:ibe,:,jbs:jbe)
-  Physics_five%block(nb)%delp = delp_five(ibs:ibe,jbs:jbe,:)
-  if (_ALLOCATED(Physics_five%block(nb)%tmp_4d)) &
-  Physics_five%block(nb)%tmp_4d = q_five(ibs:ibe,jbs:jbe,:,nt_prog+1:ncnst)
+      Physics_five%block(nb)%phis = phis_five(ibs:ibe,jbs:jbe)
+      Physics_five%block(nb)%u    = ua_five(ibs:ibe,jbs:jbe,:)
+      Physics_five%block(nb)%v    = va_five(ibs:ibe,jbs:jbe,:)
+      Physics_five%block(nb)%t    = pt_five(ibs:ibe,jbs:jbe,:)
+      Physics_five%block(nb)%q    = q_five(ibs:ibe,jbs:jbe,:,1:nt_prog)
+      Physics_five%block(nb)%omega= omga_five(ibs:ibe,jbs:jbe,:)
+      Physics_five%block(nb)%pe   = pe_five(ibs:ibe,:,jbs:jbe)
+      Physics_five%block(nb)%peln = peln_five(ibs:ibe,:,jbs:jbe)
+      Physics_five%block(nb)%delp = delp_five(ibs:ibe,jbs:jbe,:)
+      if (_ALLOCATED(Physics_five%block(nb)%tmp_4d)) &
+          Physics_five%block(nb)%tmp_4d = q_five(ibs:ibe,jbs:jbe,:,nt_prog+1:ncnst)
 
-  !   Compute heights
-  call fv_compute_p_z (nlev_five, Physics_five%block(nb)%phis, Physics_five%block(nb)%pe, &
-  Physics_five%block(nb)%peln, Physics_five%block(nb)%delp, Physics_five%block(nb)%delz, &
-  Physics_five%block(nb)%t, Physics_five%block(nb)%q(:,:,:,Physics_five%control%sphum), &
-  Physics_five%block(nb)%p_full, Physics_five%block(nb)%p_half, &
-  Physics_five%block(nb)%z_full, Physics_five%block(nb)%z_half, &
-  Physics_five%control%phys_hydrostatic)
-  
-  if (PRESENT(Physics_tendency_five)) then
-      !--- copy the dynamics tendencies into the physics tendencies
-      !--- if one wants to run physics concurrent with dynamics,
-      !--- these values would be zeroed out and accumulated
-      !--- in the atmosphere_state_update
-      Physics_tendency_five%block(nb)%u_dt = u_dt_five(ibs:ibe,jbs:jbe,:)
-      Physics_tendency_five%block(nb)%v_dt = v_dt_five(ibs:ibe,jbs:jbe,:)
-      Physics_tendency_five%block(nb)%t_dt = t_dt_five(ibs:ibe,jbs:jbe,:)
-      Physics_tendency_five%block(nb)%q_dt = q_dt_five(ibs:ibe,jbs:jbe,:,1:nt_prog)
-      Physics_tendency_five%block(nb)%qdiag = q_five(ibs:ibe,jbs:jbe,:,nt_prog+1:ncnst)
-  endif
+      !   Compute heights
+      call fv_compute_p_z (nlev_five, Physics_five%block(nb)%phis, Physics_five%block(nb)%pe, &
+      Physics_five%block(nb)%peln, Physics_five%block(nb)%delp, Physics_five%block(nb)%delz, &
+      Physics_five%block(nb)%t, Physics_five%block(nb)%q(:,:,:,Physics_five%control%sphum), &
+      Physics_five%block(nb)%p_full, Physics_five%block(nb)%p_half, &
+      Physics_five%block(nb)%z_full, Physics_five%block(nb)%z_half, &
+      Physics_five%control%phys_hydrostatic)
+      
+      if (PRESENT(Physics_tendency_five)) then
+          !--- copy the dynamics tendencies into the physics tendencies
+          !--- if one wants to run physics concurrent with dynamics,
+          !--- these values would be zeroed out and accumulated
+          !--- in the atmosphere_state_update
+          Physics_tendency_five%block(nb)%u_dt = u_dt_five(ibs:ibe,jbs:jbe,:)
+          Physics_tendency_five%block(nb)%v_dt = v_dt_five(ibs:ibe,jbs:jbe,:)
+          Physics_tendency_five%block(nb)%t_dt = t_dt_five(ibs:ibe,jbs:jbe,:)
+          Physics_tendency_five%block(nb)%q_dt = q_dt_five(ibs:ibe,jbs:jbe,:,1:nt_prog)
+          Physics_tendency_five%block(nb)%qdiag = q_five(ibs:ibe,jbs:jbe,:,nt_prog+1:ncnst)
+      endif
 
-  write (*,*) 'omga_five from input_five', omga_five
+      write (*,*) 'omga_five from input_five', omga_five
   enddo
 
 end subroutine atmos_physics_driver_inputs_five
