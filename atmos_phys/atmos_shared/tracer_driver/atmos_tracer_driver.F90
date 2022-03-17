@@ -2610,7 +2610,7 @@ integer :: logunit
       call atmos_convection_tracer_end
       call atmos_dust_end
       call atmos_sea_salt_end
-      call atmos_sulfate_end
+      ! call atmos_sulfate_end !yzheng should be changed
       call atmos_SOA_end
       call atmos_carbon_aerosol_end
       if (nch3i > 0) then
