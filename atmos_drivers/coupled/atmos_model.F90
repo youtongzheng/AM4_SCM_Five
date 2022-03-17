@@ -115,7 +115,9 @@ use physics_driver_mod, only: surf_diff_type, &
 use five_mod, only: five_init, &
                     atmos_physics_driver_inputs_five, &
                     five_tend_low_to_high, &
-                    five_tend_high_to_low
+                    five_tend_high_to_low, &
+                    atmosphere_pref_five
+
 use five_mod, only: nlev_five, do_five                
 use atmosphere_mod,  only:   atmosphere_state_update_five
 
@@ -954,6 +956,7 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
     call five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
                   Atm_block, Atmos%lon_bnd(:,:), Atmos%lat_bnd(:,:), & 
                   p_hydro, hydro, do_uni_zfull)
+    call atmosphere_pref_five (Physics_five%glbl_qty%pref)
 
 !---------- initialize physics -------
     call atmos_physics_driver_inputs (Physics, Atm_block)

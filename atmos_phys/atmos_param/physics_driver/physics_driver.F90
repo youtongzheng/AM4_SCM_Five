@@ -958,7 +958,7 @@ type(physics_type),           intent(inout),  optional :: Physics_five
         ibe = Atm_block%ibe(nb)-Atm_block%isc+1
         jbs = Atm_block%jbs(nb)-Atm_block%jsc+1
         jbe = Atm_block%jbe(nb)-Atm_block%jsc+1
-        if (.not. do_five) then
+        if (.not. do_five) then !yzheng
           trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics%block(nb)%q
           trs(ibs:ibe,jbs:jbe,:,ntp+1:nt) = Physics%block(nb)%tmp_4d
           phalf(ibs:ibe,jbs:jbe,:)        = Physics%block(nb)%p_half
@@ -983,9 +983,15 @@ type(physics_type),           intent(inout),  optional :: Physics_five
 
       if (do_moist_processes) then
         call mpp_clock_begin ( moist_processes_init_clock )
-        call moist_processes_init (id, jd, kd, lonb, latb, lon, lat,  &
-                                   phalf, Physics%glbl_qty%pref(:,1),&
-                                   axes, Time, Physics%control, Exch_ctrl) 
+        if (.not. do_five) then !yzheng
+          call moist_processes_init (id, jd, kd, lonb, latb, lon, lat,  &
+                                    phalf, Physics%glbl_qty%pref(:,1),&
+                                    axes, Time, Physics%control, Exch_ctrl) 
+        else
+          call moist_processes_init (id, jd, kd, lonb, latb, lon, lat,  &
+                                    phalf, Physics_five%glbl_qty%pref(:,1),&
+                                    axes, Time, Physics%control, Exch_ctrl) 
+        end if
 
         call mpp_clock_end ( moist_processes_init_clock )
       else
@@ -997,8 +1003,13 @@ type(physics_type),           intent(inout),  optional :: Physics_five
 !    initialize damping_driver_mod.
 !-----------------------------------------------------------------------
       call mpp_clock_begin ( damping_init_clock )
-      call damping_driver_init (lonb, latb, Physics%glbl_qty%pref(:,1), &
-                                axes, Time, sgsmtn)
+      if (.not. do_five) then !yzheng
+        call damping_driver_init (lonb, latb, Physics%glbl_qty%pref(:,1), &
+                                  axes, Time, sgsmtn)
+      else
+        call damping_driver_init (lonb, latb, Physics_five%glbl_qty%pref(:,1), &
+                                  axes, Time, sgsmtn)
+      end if
       call mpp_clock_end ( damping_init_clock )
 
 !-----------------------------------------------------------------------
@@ -1247,15 +1258,15 @@ type(physics_type),           intent(inout),  optional :: Physics_five
           Physics%block(nb)%q = trs(ibs:ibe,jbs:jbe,:,1:ntp)
           Physics_tendency%block(nb)%qdiag = trs(ibs:ibe,jbs:jbe,:,ntp+1:nt)
         else
-          Physics%block(nb)%q = trs(ibs:ibe,jbs:jbe,:,1:ntp)
-          Physics_tendency%block(nb)%qdiag = trs(ibs:ibe,jbs:jbe,:,ntp+1:nt)
+          ! Physics%block(nb)%q = trs(ibs:ibe,jbs:jbe,:,1:ntp)
+          ! Physics_tendency%block(nb)%qdiag = trs(ibs:ibe,jbs:jbe,:,ntp+1:nt)
 
-          ! call five_var_high_to_low_4d(trs(ibs:ibe,jbs:jbe,:,:), Physics%block(nb), Physics_five%block(nb), trs_tmp(ibs:ibe,jbs:jbe,:,:))
-          ! Physics%block(nb)%q = trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
-          ! Physics_tendency%block(nb)%qdiag = trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
+          call five_var_high_to_low_4d(trs(ibs:ibe,jbs:jbe,:,:), Physics%block(nb), Physics_five%block(nb), trs_tmp(ibs:ibe,jbs:jbe,:,:))
+          Physics%block(nb)%q = trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
+          Physics_tendency%block(nb)%qdiag = trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
 
-          ! write (*,*) 'q do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
-          ! write (*,*) 'qdiag do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
+          write (*,*) 'q do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
+          write (*,*) 'qdiag do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
 
           deallocate (trs_tmp)
         end if

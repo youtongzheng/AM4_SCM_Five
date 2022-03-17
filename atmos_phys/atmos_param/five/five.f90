@@ -35,7 +35,7 @@ use             fms_mod, only: open_namelist_file
     !-----------------
     ! FV core modules:
     !-----------------
-    use            fv_pack, only: ak, bk, nlon, mlat, nlev, ncnst
+    use            fv_pack, only: ak, bk, nlon, mlat, nlev, ncnst, get_eta_level
  
     implicit none
     private
@@ -43,7 +43,8 @@ use             fms_mod, only: open_namelist_file
     public five_init, atmos_physics_driver_inputs_five, &
                       five_tend_low_to_high, five_tend_high_to_low, &
                       five_var_high_to_low_4d, &
-                      update_bomex_forc_five
+                      update_bomex_forc_five, &
+                      atmosphere_pref_five
                       ! atmosphere_state_update_five
 
     !------------------------------------------------------------------------
@@ -130,6 +131,9 @@ use             fms_mod, only: open_namelist_file
     public :: nlev_five
 
     logical :: nonzero_rad_flux_init = .false.
+
+
+    real, allocatable :: pref_five(:,:), dum1d(:)
 
     !------------------------------------------------------------------------
     !------ constants-------
@@ -687,6 +691,25 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     r_dt_five0 => null()
     rdiag_five0 => null()
   end subroutine five_tend_high_to_low
+
+  subroutine atmosphere_pref_five (p_ref_five)
+    real, dimension(:,:), intent(inout) :: p_ref_five
+
+    !--- allocate pref
+    allocate(pref_five(nlev_five+1,2), dum1d(nlev_five+1))
+
+    !---------- reference profile -----------
+    pref_five(nlev_five+1,1) = 101325.
+    pref_five(nlev_five+1,2) = 81060.
+
+    call get_eta_level ( nlev_five, pref_five(nlev+1,1), pref_five(1,1), dum1d )
+    call get_eta_level ( nlev_five, pref_five(nlev+1,2), pref_five(1,2), dum1d )
+  
+    write (*,*) 'pref_five', pref_five
+    
+    p_ref_five = pref_five
+
+  end subroutine atmosphere_pref_five
 
   subroutine five_var_high_to_low (varin, varout)
     #include "fv_arrays.h"
