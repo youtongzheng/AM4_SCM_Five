@@ -1247,19 +1247,20 @@ type(physics_type),           intent(inout),  optional :: Physics_five
           Physics%block(nb)%q = trs(ibs:ibe,jbs:jbe,:,1:ntp)
           Physics_tendency%block(nb)%qdiag = trs(ibs:ibe,jbs:jbe,:,ntp+1:nt)
         else
-          call five_var_high_to_low_4d(trs(ibs:ibe,jbs:jbe,:,:), Physics%block(nb), Physics_five%block(nb), trs_tmp(ibs:ibe,jbs:jbe,:,:))
-          Physics%block(nb)%q = trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
-          Physics_tendency%block(nb)%qdiag = trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
+          Physics%block(nb)%q = trs(ibs:ibe,jbs:jbe,:,1:ntp)
+          Physics_tendency%block(nb)%qdiag = trs(ibs:ibe,jbs:jbe,:,ntp+1:nt)
 
-          write (*,*) 'q do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
-          write (*,*) 'qdiag do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
+          ! call five_var_high_to_low_4d(trs(ibs:ibe,jbs:jbe,:,:), Physics%block(nb), Physics_five%block(nb), trs_tmp(ibs:ibe,jbs:jbe,:,:))
+          ! Physics%block(nb)%q = trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
+          ! Physics_tendency%block(nb)%qdiag = trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
+
+          ! write (*,*) 'q do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
+          ! write (*,*) 'qdiag do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
+
+          deallocate (trs_tmp)
         end if
       enddo
       deallocate (trs, phalf)
-      !yzheng
-      if (do_five) then
-        deallocate (trs_tmp)
-      end if
 
       vers = restart_versions(size(restart_versions(:)))
 
