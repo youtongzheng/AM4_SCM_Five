@@ -137,7 +137,7 @@ use             fms_mod, only: open_namelist_file
     real, parameter::ptop_min = 1.E-6  ! minimum pressure (pa) at model top to avoid
     ! floating point exception; this is not needed
     ! if model top is not at zero
-    
+
     !------------------------------------------------------------------------
     !------ constants-------
     !-----------------------------------------------------------------------
@@ -709,7 +709,8 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     call get_eta_level_five ( nlev_five, pref_five(nlev+1,2), pref_five(1,2), dum1d )
   
     write (*,*) 'pref_five', pref_five
-    
+    write (*,*) 'dum1d', dum1d
+
     p_ref_five = pref_five
 
   end subroutine atmosphere_pref_five
@@ -732,7 +733,7 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
 
      ph(1) = ak_five (1)
   do k=2,nlev_five+1
-     ph(k) = ak_five (k) + ak_five(k)*p_s
+     ph(k) = ak_five (k) + bk_five(k)*p_s
   enddo
 
   if ( present(pscale) ) then
