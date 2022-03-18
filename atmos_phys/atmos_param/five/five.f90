@@ -705,8 +705,8 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     pref_five(nlev_five+1,1) = 101325.
     pref_five(nlev_five+1,2) = 81060.
 
-    call get_eta_level_five ( nlev_five, pref_five(nlev+1,1), pref_five(1,1), dum1d )
-    call get_eta_level_five ( nlev_five, pref_five(nlev+1,2), pref_five(1,2), dum1d )
+    call get_eta_level_five ( nlev_five, pref_five(nlev_five+1,1), pref_five(1,1), dum1d )
+    call get_eta_level_five ( nlev_five, pref_five(nlev_five+1,2), pref_five(1,2), dum1d )
   
     write (*,*) 'pref_five', pref_five
     write (*,*) 'dum1d', dum1d
@@ -732,8 +732,9 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
   call error_mesg('get_eta_level:','dimensionally inconsistent', FATAL)
 
      ph(1) = ak_five (1)
+
   do k=2,nlev_five+1
-     ph(k) = ak_five (k) + bk_five(k)*p_s
+     ph(k) = ak_five(k) + bk_five(k)*p_s
   enddo
 
   if ( present(pscale) ) then
