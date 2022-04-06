@@ -155,10 +155,9 @@ use grey_radiation_mod,       only: grey_radiation_init, grey_radiation, &
 
 use monin_obukhov_mod,        only: monin_obukhov_init
 
-!yzheng
-use five_mod, only: nlev_five, do_five
-! use five_mod, only: diff_cu_mo_five, diff_t_five, diff_m_five, radturbten_five, diff_t_clubb_five
+!yzheng: modules and variables related to FIVE
 use five_mod, only: five_var_high_to_low_4d
+use five_mod, only: nlev_five, do_five
 
 #ifdef SCM
 ! Option to add SCM radiative tendencies from forcing to lw_tendency
@@ -485,15 +484,6 @@ real,    dimension(:,:,:), allocatable,target ::  diff_t_clubb
 
 real,    dimension(:,:,:), allocatable        :: temp_last, q_last
 
-! !yzheng
-! real, allocatable:: diff_cu_mo_five(:,:,:)
-! real, allocatable:: diff_t_five(:,:,:)
-! real, allocatable:: diff_m_five(:,:,:)
-! real, allocatable:: radturbten_five(:,:,:)
-! real, allocatable:: diff_t_clubb_five(:,:,:)
-
-! real,    dimension(:,:,:), allocatable,target :: diff_cu_mo_five, diff_t_five, diff_m_five, &
-!                                                 radturbten_five, diff_t_clubb_five
 !--- for netcdf restart
 type(restart_file_type), pointer, save :: Phy_restart => NULL()
 type(restart_file_type), pointer, save :: Til_restart => NULL()
@@ -619,7 +609,7 @@ subroutine physics_driver_init (Time, lonb, latb, lon, lat, axes, &
                                 Surf_diff, Exch_ctrl, Atm_block,   &
                                 Moist_clouds, Physics, Physics_tendency, &
                                 diffm, difft, &
-                                Physics_five) !yzheng 
+                                Physics_five) !yzheng: add the five option
 
 !---------------------------------------------------------------------
 !    physics_driver_init is the constructor for physics_driver_mod.
@@ -636,7 +626,7 @@ type(clouds_from_moist_type), intent(inout) :: Moist_clouds(:)
 type(physics_type),           intent(inout) :: Physics
 type(physics_tendency_type),  intent(inout) :: Physics_tendency
 real,    dimension(:,:,:),    intent(out),  optional :: diffm, difft
-type(physics_type),           intent(inout),  optional :: Physics_five
+type(physics_type),           intent(inout),  optional :: Physics_five !yzheng
 
 !---------------------------------------------------------------------
 !  intent(in) variables:
@@ -674,9 +664,7 @@ type(physics_type),           intent(inout),  optional :: Physics_five
                            tracer_init_clock
       real, dimension(:,:,:),   allocatable :: phalf
       real, dimension(:,:,:,:), allocatable :: trs
-
-      !yzheng
-      real, dimension(:,:,:,:), allocatable :: trs_tmp
+      if (do_five) real, dimension(:,:,:,:), allocatable :: trs_tmp !yzheng: the variable that stores the native-grid trs when do_five is true (trs is at five grid).
 !---------------------------------------------------------------------
 !  local variables:
 !
@@ -754,7 +742,7 @@ type(physics_type),           intent(inout),  optional :: Physics_five
 !---------------------------------------------------------------------
       id = size(lonb,1)-1 
       jd = size(latb,2)-1
-      !yzheng
+      !yzheng: ensure that arrays with the k dimension are corrently initialized 
       if (do_five) then
         kd = nlev_five
       else 
@@ -948,32 +936,24 @@ type(physics_type),           intent(inout),  optional :: Physics_five
 
 !--- define trs and p_half on the full domain 
       allocate (trs(id,jd,kd,nt), phalf(id,jd,kd+1))
-      !yzheng
-      if (do_five) then
-        allocate (trs_tmp(id,jd,Atm_block%npz,nt))
-      end if
+      if (do_five) allocate (trs_tmp(id,jd,Atm_block%npz,nt))      !yzheng
 
       do nb = 1, Atm_block%nblks
         ibs = Atm_block%ibs(nb)-Atm_block%isc+1
         ibe = Atm_block%ibe(nb)-Atm_block%isc+1
         jbs = Atm_block%jbs(nb)-Atm_block%jsc+1
         jbe = Atm_block%jbe(nb)-Atm_block%jsc+1
-        if (.not. do_five) then !yzheng
+        !yzheng: if using five, the tracer variables should be at the five vertical grid 
+        if (.not. do_five) then
           trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics%block(nb)%q
           trs(ibs:ibe,jbs:jbe,:,ntp+1:nt) = Physics%block(nb)%tmp_4d
           phalf(ibs:ibe,jbs:jbe,:)        = Physics%block(nb)%p_half
   !--- the 'temp' variable inside of Physics is no longer needed - deallocate it
           deallocate(Physics%block(nb)%tmp_4d)
         else
-
-          write(*,*) 'Physics_five%block(nb)%q', Physics_five%block(nb)%q
-          write(*,*) 'Physics_five%block(nb)%tmp_4d', Physics_five%block(nb)%tmp_4d
-          write(*,*) 'Physics_five%block(nb)%p_half', Physics_five%block(nb)%p_half
-
-          trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics_five%block(nb)%q !yzheng need to change
+          trs(ibs:ibe,jbs:jbe,:,1:ntp)    = Physics_five%block(nb)%q
           trs(ibs:ibe,jbs:jbe,:,ntp+1:nt) = Physics_five%block(nb)%tmp_4d
           phalf(ibs:ibe,jbs:jbe,:)        = Physics_five%block(nb)%p_half
-  !--- the 'temp' variable inside of Physics is no longer needed - deallocate it
           deallocate(Physics_five%block(nb)%tmp_4d)
         end if
       enddo
@@ -983,6 +963,7 @@ type(physics_type),           intent(inout),  optional :: Physics_five
 
       if (do_moist_processes) then
         call mpp_clock_begin ( moist_processes_init_clock )
+        !yzheng: if using five, replace the Physics%glbl_qty%pref with Physics_five%glbl_qty%pref
         if (.not. do_five) then !yzheng
           call moist_processes_init (id, jd, kd, lonb, latb, lon, lat,  &
                                     phalf, Physics%glbl_qty%pref(:,1),&
@@ -1003,7 +984,8 @@ type(physics_type),           intent(inout),  optional :: Physics_five
 !    initialize damping_driver_mod.
 !-----------------------------------------------------------------------
       call mpp_clock_begin ( damping_init_clock )
-      if (.not. do_five) then !yzheng
+      !yzheng: if using five, replace the Physics%glbl_qty%pref with Physics_five%glbl_qty%pref
+      if (.not. do_five) then
         call damping_driver_init (lonb, latb, Physics%glbl_qty%pref(:,1), &
                                   axes, Time, sgsmtn)
       else
@@ -1115,7 +1097,7 @@ type(physics_type),           intent(inout),  optional :: Physics_five
 !-----------------------------------------------------------------------
      call error_mesg('physics_driver_mod', 'number of cloud schemes found = '//trim(string(Exch_ctrl%ncld)), NOTE)
 
-     !yzheng
+     !yzheng: added the do_five and nlev_five as optional inputs. If doing five, use the nlev_five (i.e. kd here) instead of the Atm_block%npz
      call alloc_clouds_from_moist_type(Moist_clouds, Exch_ctrl, Atm_block, &
                                         do_five, nlev_five)
 
@@ -1253,21 +1235,14 @@ type(physics_type),           intent(inout),  optional :: Physics_five
 
         !--- return trs to the blocked data structure
 
-        !yzheng
+        !yzheng: since the trs is at the five grid, we need to average the trs to trs_tmp and pass the trs_tmp to the Physics blocked data structure 
         if (.not. do_five) then
           Physics%block(nb)%q = trs(ibs:ibe,jbs:jbe,:,1:ntp)
           Physics_tendency%block(nb)%qdiag = trs(ibs:ibe,jbs:jbe,:,ntp+1:nt)
         else
-          ! Physics%block(nb)%q = trs(ibs:ibe,jbs:jbe,:,1:ntp)
-          ! Physics_tendency%block(nb)%qdiag = trs(ibs:ibe,jbs:jbe,:,ntp+1:nt)
-
           call five_var_high_to_low_4d(trs(ibs:ibe,jbs:jbe,:,:), Physics%block(nb), Physics_five%block(nb), trs_tmp(ibs:ibe,jbs:jbe,:,:))
           Physics%block(nb)%q = trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
           Physics_tendency%block(nb)%qdiag = trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
-
-          write (*,*) 'q do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,1:ntp)
-          write (*,*) 'qdiag do_five_yes', trs_tmp(ibs:ibe,jbs:jbe,:,ntp+1:nt)
-
           deallocate (trs_tmp)
         end if
       enddo
@@ -2009,9 +1984,6 @@ real,  dimension(:,:,:), intent(out)  ,optional :: diffm, difft
                              tm, rm(:,:,:,1), rm, rdiag,                      &
                              udt, vdt, tdt, rdt(:,:,:,1), rdt,                &
                              diff_t_vert, diff_m_vert, gust, z_pbl, tke_avg = tke_avg)
-      !yzheng should be deleted
-      write (*,*) 'diff_t_vert', diff_t_vert
-      write (*,*) 'diff_m_vert', diff_m_vert
 
      call mpp_clock_end ( turb_clock )
      pbltop(is:ie,js:je) = z_pbl(:,:)
@@ -2088,7 +2060,7 @@ real,  dimension(:,:,:), intent(out)  ,optional :: diffm, difft
         diff_m(is:ie,js:je,:) = diff_m_vert + diff_cu_mo(is:ie, js:je,:)
       end if
 
-      !yzheng should be deleted
+      !yzheng: check the diffusion (this should be eventually deleted)
       write (*,*) 'diff_t', diff_t
       write (*,*) 'diff_m', diff_m
       write (*,*) 'diff_cu_mo', diff_cu_mo
@@ -2144,11 +2116,6 @@ real,  dimension(:,:,:), intent(out)  ,optional :: diffm, difft
                              Time_next, is, js, 1)
         endif
       end do
-      
-      ! !yzheng might need to average diff_t_five to diff_t in case the difft/diffm is present
-      ! call five_var_high_to_low(diff_t_five(is:ie,js:je,:), diff_t(is:ie,js:je,:))
-      ! call five_var_high_to_low(diff_m_five(is:ie,js:je,:), diff_m(is:ie,js:je,:))
-      ! call five_var_high_to_low(diff_cu_mo_five(is:ie,js:je,:), diff_cu_mo(is:ie,js:je,:))
 
 !---------------------------------------------------------------------
 !    if desired, return diff_m and diff_t to calling routine.

@@ -4757,9 +4757,6 @@ enddo
         end do
     endif
 deallocate(axes)
-!yzheng
-write(*,*) 'file_name', file_name
-write(*,*) 'clim_type%levs', clim_type%levs
 
 ! In the case where only the midpoints of the longitudes are defined we force the definition
 ! of the boundaries to be half-way between the midpoints.

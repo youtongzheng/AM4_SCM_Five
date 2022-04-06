@@ -111,15 +111,14 @@ use physics_driver_mod, only: surf_diff_type, &
                               physics_driver_up, &
                               physics_driver_up_endts
 
-! yzheng
+!yzheng: modules and variables related to FIVE
 use five_mod, only: five_init, &
                     atmos_physics_driver_inputs_five, &
                     five_tend_low_to_high, &
                     five_tend_high_to_low, &
                     atmosphere_pref_five
-
-use five_mod, only: nlev_five, do_five                
 use atmosphere_mod,  only:   atmosphere_state_update_five
+use five_mod, only: nlev_five, do_five                
 
 !-----------------------------------------------------------------------
 
@@ -272,7 +271,7 @@ type (exchange_control_type) :: Exch_ctrl
 type (radiation_type)        :: Radiation
 type (physics_type)          :: Physics
 type (physics_tendency_type) :: Physics_tendency
-! yzheng --- FIVE variables
+!yzheng: FIVE variables
 type (physics_type)          :: Physics_five
 type (physics_tendency_type) :: Physics_tendency_five
 type (radiation_flux_type),    dimension(:), allocatable :: Rad_flux_five
@@ -484,7 +483,7 @@ subroutine update_atmos_model_down( Surface_boundary, Atmos )
     integer :: isc, iec, jsc, jec, npz
     integer :: is, ie, js, je
     integer :: blk, ibs, ibe, jbs, jbe
-    integer :: sphum, nqa !yzheng should be deleted
+    integer :: sphum, nqa !yzheng: temporary, used to write some diagnostics (should be deleted eventually)
     logical, save :: message = .true.
 !-----------------------------------------------------------------------
     call set_atmosphere_pelist()
@@ -499,13 +498,15 @@ subroutine update_atmos_model_down( Surface_boundary, Atmos )
       enddo
     endif
 
-!yzheng --add prepare driver inputs for FIVE arrays
-    call atmos_physics_driver_inputs_five(Physics_five, Atm_block, Physics_tendency_five)
-    do blk = 1,Atm_block%nblks
-      call five_tend_low_to_high(Physics%block(blk), Physics_tendency%block(blk), Rad_flux(1)%block(blk), &
-                                Physics_five%block(blk), Physics_tendency_five%block(blk), Rad_flux_five(1)%block(blk))
-      Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dir = Rad_flux(1)%block(blk)%flux_sw_down_vis_dir !yzheng need to check
-    enddo
+!yzheng: prepare driver inputs for FIVE arrays
+    if (do_five) then
+      call atmos_physics_driver_inputs_five(Physics_five, Atm_block, Physics_tendency_five)
+      do blk = 1,Atm_block%nblks
+        call five_tend_low_to_high(Physics%block(blk), Physics_tendency%block(blk), Rad_flux(1)%block(blk), &
+                                  Physics_five%block(blk), Physics_tendency_five%block(blk), Rad_flux_five(1)%block(blk))
+        Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dir = Rad_flux(1)%block(blk)%flux_sw_down_vis_dir !yzheng! need to check
+      enddo
+    endif
 
 !---------------------------------------------------------------------
 ! call physics_driver_down_time_vary to do the time-dependent, spatially
@@ -536,7 +537,10 @@ subroutine update_atmos_model_down( Surface_boundary, Atmos )
        ie = iew-isc+1
        js = jsw-jsc+1
        je = jew-jsc+1
-      !  write (*,*) 'atmos_model Rad_flux t_dt', Rad_flux(1)%block(blk)%tdt_rad
+      
+       !yzheng: use FIVE or not? If yes, replace the npz, Physics%block, Physics_tendency%block and Rad_flux%control
+       ! with nlev_five, Physics_five%block, Physics_tendency%block and Rad_flux_five%control, respectively. After that,
+       ! average the Physics_tendency_five%block back to Physics_tendency%block. 
 
        if (.not. do_five) then
         call physics_driver_down ( is, ie, js, je, npz, Time_prev, Atmos%Time, Time_next, &
@@ -566,7 +570,7 @@ subroutine update_atmos_model_down( Surface_boundary, Atmos )
                                     Rad_flux(1)%control, &
                                     Rad_flux(1)%block(blk) )
        else
-        ! yzheng
+        !yzheng: use five
         call physics_driver_down ( is, ie, js, je, nlev_five, Time_prev, Atmos%Time, Time_next, &
                                     Atmos%lat   (is:ie,js:je),                             &
                                     Atmos%lon   (is:ie,js:je),                             &
@@ -596,7 +600,8 @@ subroutine update_atmos_model_down( Surface_boundary, Atmos )
 
         call five_tend_high_to_low (Physics_five%block(blk), Physics_tendency_five%block(blk), Physics%block(blk), Physics_tendency%block(blk))
        end if
-
+        
+        !yzheng: output to check (should be deleted eventually)
         sphum = get_tracer_index ( MODEL_ATMOS, 'sphum' )
         nqa   = get_tracer_index ( MODEL_ATMOS, 'cld_amt' )
 
@@ -686,7 +691,7 @@ subroutine update_atmos_model_up( Surface_boundary, Atmos)
     integer :: isc, iec, jsc, jec, npz
     integer :: is, ie, js, je
     integer :: blk
-    integer :: sphum, nqa !yzheng should be deleted
+    integer :: sphum, nqa !yzheng: temporary, used to write some diagnostics (should be deleted eventually)
     character(len=132) :: text
     logical, save :: message = .true.
 !-----------------------------------------------------------------------
@@ -729,7 +734,10 @@ subroutine update_atmos_model_up( Surface_boundary, Atmos)
        ie = iew-isc+1
        js = jsw-jsc+1
        je = jew-jsc+1
-
+     
+    !yzheng: use FIVE or not? If yes, replace the npz, Physics%block, and Physics_tendency%block
+    ! with nlev_five, Physics_five%block, and Physics_tendency%block, respectively. After that,
+    ! average the Physics_tendency_five%block back to Physics_tendency%block.  
      if (.not. do_five) then 
       call physics_driver_up ( is, ie, js, je, npz, &
                                 Time_prev, Atmos%Time, Time_next, &
@@ -762,7 +770,7 @@ subroutine update_atmos_model_up( Surface_boundary, Atmos)
                                 Atmos%fprec(is:ie,js:je), &
                                 Atmos%gust (is:ie,js:je) )
      else
-              !yzheng five
+      !yzheng: use five
       call physics_driver_up ( is, ie, js, je, nlev_five, &
                                 Time_prev, Atmos%Time, Time_next, &
                                 Atmos%lat (is:ie,js:je),   &
@@ -795,11 +803,9 @@ subroutine update_atmos_model_up( Surface_boundary, Atmos)
                                 Atmos%gust (is:ie,js:je) )
        
           call five_tend_high_to_low (Physics_five%block(blk), Physics_tendency_five%block(blk), Physics%block(blk), Physics_tendency%block(blk))
-        ! call five_tend_low_to_high(Physics%block(blk), Physics_tendency%block(blk), Rad_flux(1)%block(blk), &
-        ! Physics_five%block(blk), Physics_tendency_five%block(blk), Rad_flux_five(1)%block(blk))
      end if
 
-    !yzheng
+    !yzheng: output some diagnostics for check purpose (should be deleted eventually)
     sphum = get_tracer_index ( MODEL_ATMOS, 'sphum' )
     nqa   = get_tracer_index ( MODEL_ATMOS, 'cld_amt' )
 
@@ -952,14 +958,16 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
                         nxblocks, nyblocks, block_message)
     call alloc_physics_type (Physics, Atm_block, p_hydro, hydro, do_uni_zfull) !miz
     call atmosphere_pref (Physics%glbl_qty%pref)
-! yzheng    initialize FIVE--------------
-    call five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
-                  Atm_block, Atmos%lon_bnd(:,:), Atmos%lat_bnd(:,:), & 
-                  p_hydro, hydro, do_uni_zfull)
-    call atmosphere_pref_five (Physics_five%glbl_qty%pref)
-
+! yzheng: -------------------initialize FIVE----------------------------
+    if (do_five) then
+      call five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
+                    Atm_block, Atmos%lon_bnd(:,:), Atmos%lat_bnd(:,:), & 
+                    p_hydro, hydro, do_uni_zfull)
+      call atmosphere_pref_five (Physics_five%glbl_qty%pref)
+    endif
 !---------- initialize physics -------
     call atmos_physics_driver_inputs (Physics, Atm_block)
+    !yzheng: If use five, input the Physics_five to help initializing some physics. 
     if (.not. do_five) then !yzheng
       call physics_driver_init(Atmos%Time,         &
                               Atmos%lon_bnd(:,:), &
@@ -985,7 +993,7 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
                               Atm_block,          &
                               Moist_clouds,       &
                               Physics, Physics_tendency, Physics_five = Physics_five) !yzheng
-    end if
+     end if
 !--- need to return tracer values back to dy-core
 !--- because tracer initilization inside of physics
 !--- can reset initial values when they are unset

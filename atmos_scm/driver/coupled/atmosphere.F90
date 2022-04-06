@@ -84,7 +84,7 @@ use atmos_nudge_mod,    only: atmos_nudge_init, atmos_nudge_end
 use fv_arrays_mod,      only: fv_print_chksums
 use update_fv_phys_mod, only: update_fv_phys
 
-!yzheng
+!yzheng: five variables
 use five_mod, only: ua_five, va_five, pt_five, q_five, &
                     u_dt_five, v_dt_five, t_dt_five, q_dt_five
 
@@ -110,7 +110,7 @@ public :: atmosphere_resolution,  atmosphere_boundary,     &
 !--- physics/radiation data exchange routines
 public :: atmos_radiation_driver_inputs, atmos_physics_driver_inputs
 
-!yzheng
+!yzheng: module that update five prognostic variables
 public :: atmosphere_state_update_five
 
 public  surf_diff_type
@@ -186,7 +186,6 @@ real :: ps
 
 
 real                :: dt_atmos
-! public              :: dt_atmos !yzheng
 type    (time_type) :: Time_step_atmos
 
 real :: tph0d_in = 0.0, tlm0d_in = 0.0
@@ -972,11 +971,11 @@ contains
  
   end subroutine atmosphere_state_update
 
-  !yzheng
-  subroutine atmosphere_state_update_five (Time, Physics_tendency, Physics, Atm_block) !yzheng need to comment
+  !yzheng: module that update five prognostic variables
+  subroutine atmosphere_state_update_five (Time, Physics_tendency_five, Physics_five, Atm_block)
    type(time_type),              intent(in) :: Time
-   type (physics_tendency_type), intent(in) :: Physics_tendency
-   type (physics_type),          intent(in) :: Physics
+   type (physics_tendency_type), intent(in) :: Physics_tendency_five
+   type (physics_type),          intent(in) :: Physics_five
    type (block_control_type),    intent(in) :: Atm_block
    type(time_type) :: Time_next, Time_step
 !--- local variables ---
@@ -989,7 +988,7 @@ contains
    zvir = rvgas/rdgas - 1.
    
    call get_number_tracers(MODEL_ATMOS, num_tracers=nt_tot, num_prog=nt_prog)  
-!--- put u/v tendencies into haloed arrays u_dt and v_dt
+!--- put u/v tendencies into haloed arrays u_dt_five and v_dt_five
 !$OMP parallel do default(shared) private(nb, ibs, ibe, jbs, jbe)
    do nb = 1,Atm_block%nblks
      ibs = Atm_block%ibs(nb)
@@ -998,14 +997,14 @@ contains
      jbe = Atm_block%jbe(nb)
 
 
-    u_dt_five(ibs:ibe,jbs:jbe,:)   = Physics_tendency%block(nb)%u_dt
-    v_dt_five(ibs:ibe,jbs:jbe,:)   = Physics_tendency%block(nb)%v_dt
-    t_dt_five(ibs:ibe,jbs:jbe,:)   = Physics_tendency%block(nb)%t_dt
-    q_dt_five(ibs:ibe,jbs:jbe,:,1:nt_prog) = Physics_tendency%block(nb)%q_dt
+    u_dt_five(ibs:ibe,jbs:jbe,:)   = Physics_tendency_five%block(nb)%u_dt
+    v_dt_five(ibs:ibe,jbs:jbe,:)   = Physics_tendency_five%block(nb)%v_dt
+    t_dt_five(ibs:ibe,jbs:jbe,:)   = Physics_tendency_five%block(nb)%t_dt
+    q_dt_five(ibs:ibe,jbs:jbe,:,1:nt_prog) = Physics_tendency_five%block(nb)%q_dt
 
 !--- diagnostic tracers are being updated in-place
 !--- tracer fields must be returned to the Atm structure
-    q_five(ibs:ibe,jbs:jbe,:,nt_prog+1:ncnst) = Physics_tendency%block(nb)%qdiag
+    q_five(ibs:ibe,jbs:jbe,:,nt_prog+1:ncnst) = Physics_tendency_five%block(nb)%qdiag
 
    enddo
  
@@ -1013,6 +1012,7 @@ contains
  
  end subroutine atmosphere_state_update_five
 
+ !yzheng: five version of the prog_var_time_diff
  subroutine prog_var_time_diff_five (dt, nt)
       real,                intent(in)    :: dt
       integer, optional,   intent(in)    :: nt

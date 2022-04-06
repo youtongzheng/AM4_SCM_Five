@@ -3,7 +3,6 @@ module five_mod
 
 use physics_types_mod,  only: physics_tendency_type, physics_type, &
                               physics_input_block_type, physics_tendency_block_type
-! use atmosphere_mod,  only: dt_atmos
 use       constants_mod, only: rdgas, grav, rvgas, radius, PI
 
 use       constants_mod, only: cp_air, rdgas, grav, rvgas, kappa, pstd_mks                             
@@ -32,125 +31,113 @@ use             mpp_mod, only: input_nml_file, mpp_get_current_pelist
 #else
 use             fms_mod, only: open_namelist_file
 #endif
-    !-----------------
-    ! FV core modules:
-    !-----------------
-    use            fv_pack, only: ak, bk, nlon, mlat, nlev, ncnst, get_eta_level
+!-----------------
+! FV core modules:
+!-----------------
+use            fv_pack, only: ak, bk, nlon, mlat, nlev, ncnst, get_eta_level
  
-    implicit none
-    private
+!-----------------------------------------------------------------
+implicit none
+private
 
-    public five_init, atmos_physics_driver_inputs_five, &
-                      five_tend_low_to_high, five_tend_high_to_low, &
-                      five_var_high_to_low_4d, &
-                      update_bomex_forc_five, &
-                      atmosphere_pref_five
-                      ! atmosphere_state_update_five
+character(len=128) :: version = '$Id$'
+character(len=128) :: tagname = '$Name$'
 
-    !------------------------------------------------------------------------
-    !---prognostic variables and their tendencies in FIVE grid---------------
-    !------------------------------------------------------------------------
-    real, allocatable:: ua_five(:,:,:)      ! (ua, va) are mostly used as the A grid winds
-    real, allocatable:: va_five(:,:,:)
-    real, allocatable :: pt_five(:,:,:)   ! temperature (K)
-    real, allocatable :: delp_five(:,:,:) ! pressure thickness (pascal)
-    real, allocatable :: q_five(:,:,:,:)  ! specific humidity and constituents
+public five_init, atmos_physics_driver_inputs_five, &
+                  five_tend_low_to_high, five_tend_high_to_low, &
+                  five_var_high_to_low_4d, &
+                  update_bomex_forc_five, &
+                  atmosphere_pref_five
 
-    real, allocatable :: ps_five (:,:)      ! Surface pressure (pascal)
-    real, allocatable :: pe_five (:,:,: )   ! edge pressure (pascal)
-    real, allocatable :: pk_five  (:,:,:)   ! pe**cappa
-    real, allocatable :: peln_five(:,:,:)   ! ln(pe)
-    real, allocatable :: pkz_five (:,:,:)   ! finite-volume mean pk
-    real, allocatable :: phis_five(:,:)     ! Surface geopotential (g*Z_surf)
-    real, allocatable :: omga_five(:,:,:)   ! Vertical pressure velocity (pa/s)
+!------------------------------------------------------------------------
+!---prognostic variables and their tendencies in FIVE grid---------------
+!------------------------------------------------------------------------
+real, allocatable:: ua_five(:,:,:)      ! (ua, va) are mostly used as the A grid winds
+real, allocatable:: va_five(:,:,:)
+real, allocatable :: pt_five(:,:,:)   ! temperature (K)
+real, allocatable :: delp_five(:,:,:) ! pressure thickness (pascal)
+real, allocatable :: q_five(:,:,:,:)  ! specific humidity and constituents
 
-    real, allocatable, dimension(:,:,:) :: u_dt_five, v_dt_five, t_dt_five
-    real, allocatable :: q_dt_five(:,:,:,:)
+real, allocatable :: ps_five (:,:)      ! Surface pressure (pascal)
+real, allocatable :: pe_five (:,:,: )   ! edge pressure (pascal)
+real, allocatable :: pk_five  (:,:,:)   ! pe**cappa
+real, allocatable :: peln_five(:,:,:)   ! ln(pe)
+real, allocatable :: pkz_five (:,:,:)   ! finite-volume mean pk
+real, allocatable :: phis_five(:,:)     ! Surface geopotential (g*Z_surf)
+real, allocatable :: omga_five(:,:,:)   ! Vertical pressure velocity (pa/s)
 
-    public ua_five, va_five, pt_five, q_five
-    public u_dt_five, v_dt_five, t_dt_five, q_dt_five
+real, allocatable, dimension(:,:,:) :: u_dt_five, v_dt_five, t_dt_five
+real, allocatable :: q_dt_five(:,:,:,:)
 
-    ! real,    dimension(:,:,:), allocatable,target :: diff_cu_mo_five, diff_t_five, diff_m_five, &
-    !                                                  radturbten_five, diff_t_clubb_five
-
-    ! public diff_cu_mo_five, diff_t_five, diff_m_five, radturbten_five, diff_t_clubb_five
-
-    character(len=128) :: version = '$Id$'
-    character(len=128) :: tagname = '$Name$'
-
-    !------------------------------------------------------------------------
-    !---namelist-------------------------------------------------------------
-    !------------------------------------------------------------------------
-    logical :: do_five = .TRUE.
-    public do_five
-
-    ! This is the number of layers to add between E3SM levels
-    !  NOTE: This must be an EVEN number, due to limitations
-    !  in the tendency interpolation scheme
-    integer :: five_add_nlevels = 2
-    public five_add_nlevels
-
-    ! The bottom layer to which we will add layers to (set
-    !   to a very large value to add all the way to surface, though
-    !   currently setting this value to surface results in model
-    !   crashes in SCM, so need to investigate)
-    real, private :: five_bot_toadd = 100000.
-    
-    ! The top layer to which we will add layers to
-    real, private :: five_top_toadd = 50000.
-
-    NAMELIST / five_nml / do_five, five_add_nlevels, five_bot_toadd, five_top_toadd
-
-    !------------------------------------------------------------------------
-    !---Internal variables used for calculation------------------------------
-    !------------------------------------------------------------------------
-    integer :: five_bot_k, five_top_k ! indicees where levels are added
-    real, allocatable :: pf0_five(:) ! midpoint FIVE pressures (pascals)
-    real, allocatable :: ph0_five(:) ! interface FIVE pressures (pascals)
-
-    real, allocatable :: pf_five(:,:,:) ! midpoint FIVE pressures (pascals)
-    ! real, allocatable :: ak_tmp_five(:)
-    ! real, allocatable :: bk_tmp_five(:)
-    real, allocatable :: ak_five(:)
-    real, allocatable :: bk_five(:) 
-    
-    real, allocatable :: delz_host(:,:,:)
-    real, allocatable :: rho_host(:,:,:)
-    real, allocatable :: delz_five0(:,:,:)
-    real, allocatable :: rho_five0(:,:,:)
-
-    real, allocatable :: p_half_host(:,:,:)
-    real, allocatable :: p_full_host(:,:,:)
-    real, allocatable :: p_half_five0(:,:,:) ! interface FIVE pressures (pascals)
-    real, allocatable :: p_full_five0(:,:,:) ! midpoint FIVE pressures (pascals)
-    real, allocatable :: z_full_five0(:,:,:) ! midpoint FIVE pressures (pascals)
-
-    ! real, allocatable :: pf_host(:,:,:) ! midpoint HOST pressures (pascals)
-
-    integer :: nlev_five !total levels
-    public :: nlev_five
-
-    logical :: nonzero_rad_flux_init = .false.
+public ua_five, va_five, pt_five, q_five
+public u_dt_five, v_dt_five, t_dt_five, q_dt_five
 
 
-    real, allocatable :: pref_five(:,:), dum1d(:)
-    real, parameter::ptop_min = 1.E-6  ! minimum pressure (pa) at model top to avoid
-    ! floating point exception; this is not needed
-    ! if model top is not at zero
+!------------------------------------------------------------------------
+!---namelist-------------------------------------------------------------
+!------------------------------------------------------------------------
+logical :: do_five = .TRUE.
+public do_five
 
-    !------------------------------------------------------------------------
-    !------ constants-------
-    !-----------------------------------------------------------------------
-    real, parameter :: ps0 = 1017.8e2
-    real, parameter :: zsfc = 0
-    ! real, parameter :: grav = 9.8  
-    ! real, parameter :: RDGAS  = 287.04
-    ! real, parameter :: RVGAS  = 461.50
+! This is the number of layers to add between native levels
+!  NOTE: This must be an EVEN number, due to limitations
+!  in the tendency interpolation scheme
+integer :: five_add_nlevels = 2
+public five_add_nlevels
 
-    !------------------------------------------------------------------------
-    !------ variables for loop-------
-    !-----------------------------------------------------------------------
-    integer :: i, j, k, p
+! The bottom layer to which we will add layers to (set
+!   to a very large value to add all the way to surface, though
+!   currently setting this value to surface results in model
+!   crashes in SCM, so need to investigate)
+real, private :: five_bot_toadd = 100000.
+
+! The top layer to which we will add layers to
+real, private :: five_top_toadd = 50000.
+
+NAMELIST / five_nml / do_five, five_add_nlevels, five_bot_toadd, five_top_toadd
+
+!------------------------------------------------------------------------
+!---Internal variables used for calculation------------------------------
+!------------------------------------------------------------------------
+integer :: five_bot_k, five_top_k ! indicees where levels are added
+real, allocatable :: pf0_five(:) ! midpoint FIVE pressures (pascals), the 1D version (only used in the initialization)
+real, allocatable :: ph0_five(:) ! interface FIVE pressures (pascals), the 1D version (only used in the initialization)
+real, allocatable :: ak_five(:)
+real, allocatable :: bk_five(:) 
+
+!variables that are used for interpolation/averaging purpose.
+real, allocatable :: p_half_five(:,:,:) ! interface FIVE pressures (pascals)
+real, allocatable :: p_full_five(:,:,:) ! midpoint FIVE pressures (pascals)
+real, allocatable :: z_full_five(:,:,:) ! midpoint FIVE pressures (pascals)
+real, allocatable :: delz_five(:,:,:)
+real, allocatable :: rho_five(:,:,:)
+
+!variables from the host grid, also used for interpolation/averaging purpose
+real, allocatable :: p_half_host(:,:,:)
+real, allocatable :: p_full_host(:,:,:)
+real, allocatable :: delz_host(:,:,:)
+real, allocatable :: rho_host(:,:,:)
+
+integer :: nlev_five !total levels
+public :: nlev_five
+
+logical :: nonzero_rad_flux_init = .false.
+
+real, allocatable :: pref_five(:,:), dum1d(:)
+real, parameter::ptop_min = 1.E-6  ! minimum pressure (pa) at model top to avoid
+! floating point exception; this is not needed
+! if model top is not at zero
+
+!------------------------------------------------------------------------
+!------ constants-------
+!-----------------------------------------------------------------------
+real, parameter :: ps0 = 1017.8e2
+real, parameter :: zsfc = 0
+
+!------------------------------------------------------------------------
+!------ variables for loop-------
+!-----------------------------------------------------------------------
+integer :: i, j, k, p
 
 contains
 
@@ -164,13 +151,12 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
     type (radiation_flux_type), intent(inout) :: Rad_flux_five(:)
     type (block_control_type), intent(in) :: Atm_block
     real,    dimension(:,:),      intent(in)    :: lonb, latb
-    logical,               intent(in) :: p_hydro, hydro, do_uni_zfull !miz
+    logical,               intent(in) :: p_hydro, hydro, do_uni_zfull
 
     !--- local varialbes
     integer :: n, nb, ix, jx, npz, nt_tot, nt_prog
     integer          ::  id, jd
     integer :: unit, ierr, io
-    ! real, dimension(size(pt,1),size(pt,2),size(pt,3))   :: pf_host
 #include "fv_point.inc"
 
 !----- read namelist -----
@@ -196,66 +182,46 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
     endif
     call close_file (unit)
 
-
     !compute nlev_five and ph
-      call five_pressure_init(pe(1,:,1), ak/(0.01*ps0),bk/0.01, ps0, nlev_five)
+    !should replace ps0 with the ps(1,1)
+    call five_pressure_init(pe(1,:,1), ak/(0.01*ps0),bk/0.01, ps0, nlev_five)
 
-      ! write (*,*) 'size five lon', size(ua, 1)
-      ! write (*,*) 'size five lat', size(ua, 2)
-      ! write (*,*) 'size five nlev', size(ua, 3)
+    write (*,*) 'initial ps', ps
 
-      ! write (*,*) 'nlev_five', nlev_five
-      ! write (*,*) 'ph0_five', ph0_five
-      write (*,*) 'initial ps', ps
-      ! write (*,*) 'delp', delp
+    !allocate five variables
+    allocate ( ua_five(nlon, mlat, nlev_five) )       ; ua_five    = 0.0
+    allocate ( va_five(nlon, mlat, nlev_five) )       ; va_five    = 0.0
+    allocate (delp_five(nlon, mlat,   nlev_five))     ; delp_five  = 0.0
+    allocate (  pt_five(nlon, mlat, nlev_five))       ; pt_five    = 0.0
+    allocate (q_five(nlon, mlat, nlev_five, ncnst))   ; q_five     = 0.0
 
-      allocate ( ua_five(nlon, mlat, nlev_five) )       ; ua_five    = 0.0
-      allocate ( va_five(nlon, mlat, nlev_five) )       ; va_five    = 0.0
-      allocate (delp_five(nlon, mlat,   nlev_five))     ; delp_five  = 0.0
-      allocate (  pt_five(nlon, mlat, nlev_five))       ; pt_five    = 0.0
-      allocate (   q_five(nlon, mlat, nlev_five, ncnst))   ; q_five     = 0.0
-  
-      allocate (phis_five(nlon, mlat))                  ; phis_five  = 0.0
-      allocate (ps_five  (nlon, mlat))                  ; ps_five    = 0.0
-  
-      allocate (pkz_five (nlon, mlat, nlev_five))       ; pkz_five   = 0.0
-      allocate (pk_five  (nlon, mlat, nlev_five+1))     ; pk_five    = 0.0
-      allocate (pe_five  (nlon, nlev_five+1, mlat))     ; pe_five    = 0.0
-      allocate (peln_five(nlon, nlev_five+1, mlat))     ; peln_five  = 0.0
-  
-      allocate (omga_five(nlon, mlat, nlev_five))     ; omga_five  = 0.0
+    allocate (phis_five(nlon, mlat))                  ; phis_five  = 0.0
+    allocate (ps_five  (nlon, mlat))                  ; ps_five    = 0.0
 
-      allocate( u_dt_five(nlon, mlat, nlev_five) )     ; u_dt_five   = 0.0
-      allocate( v_dt_five(nlon, mlat, nlev_five) )     ; v_dt_five   = 0.0
-      allocate( t_dt_five(nlon, mlat, nlev_five) )     ; t_dt_five   = 0.0
-      allocate( q_dt_five(nlon, mlat, nlev_five, ncnst) ) ; q_dt_five   = 0.0
-      
-      allocate ( pf_five(nlon, mlat, nlev_five) )       ; pf_five    = 0.0
+    allocate (pkz_five (nlon, mlat, nlev_five))       ; pkz_five   = 0.0
+    allocate (pk_five  (nlon, mlat, nlev_five+1))     ; pk_five    = 0.0
+    allocate (pe_five  (nlon, nlev_five+1, mlat))     ; pe_five    = 0.0
+    allocate (peln_five(nlon, nlev_five+1, mlat))     ; peln_five  = 0.0
 
-      allocate ( delz_five0(nlon, mlat, nlev_five) )       ; delz_five0    = 0.0
-      allocate ( rho_five0(nlon, mlat, nlev_five) )       ; rho_five0    = 0.0
+    allocate (omga_five(nlon, mlat, nlev_five))       ; omga_five  = 0.0
 
-      allocate ( delz_host(nlon, mlat, nlev) )       ; delz_host    = 0.0
-      allocate ( rho_host(nlon, mlat, nlev) )       ; rho_host    = 0.0
-      ! allocate ( pf_host(nlon, mlat, nlev) )       ; pf_host    = 0.0
-      
-      allocate ( p_half_five0(nlon, mlat, nlev_five + 1) )       ; p_half_five0    = 0.0
-      allocate ( p_full_five0(nlon, mlat, nlev_five) )       ; p_full_five0    = 0.0
+    allocate( u_dt_five(nlon, mlat, nlev_five) )     ; u_dt_five   = 0.0
+    allocate( v_dt_five(nlon, mlat, nlev_five) )     ; v_dt_five   = 0.0
+    allocate( t_dt_five(nlon, mlat, nlev_five) )     ; t_dt_five   = 0.0
+    allocate( q_dt_five(nlon, mlat, nlev_five, ncnst) ) ; q_dt_five   = 0.0
 
-      allocate ( p_half_host(nlon, mlat, nlev + 1) )       ; p_half_host    = 0.0
-      allocate ( p_full_host(nlon, mlat, nlev) )       ; p_full_host    = 0.0
-      
-      allocate ( z_full_five0(nlon, mlat, nlev_five) )       ; z_full_five0    = 0.0
+    allocate ( p_half_five(nlon, mlat, nlev_five + 1) )       ; p_half_five    = 0.0
+    allocate ( p_full_five(nlon, mlat, nlev_five) )       ; p_full_five    = 0.0
+    allocate ( z_full_five(nlon, mlat, nlev_five) )       ; z_full_five    = 0.0
+    allocate ( delz_five(nlon, mlat, nlev_five) )       ; delz_five    = 0.0
+    allocate ( rho_five(nlon, mlat, nlev_five) )       ; rho_five    = 0.0
 
-      ! id = size(lonb,1)-1 
-      ! jd = size(latb,2)-1 
+    allocate ( p_half_host(nlon, mlat, nlev + 1) )       ; p_half_host    = 0.0
+    allocate ( p_full_host(nlon, mlat, nlev) )       ; p_full_host    = 0.0
+    allocate ( delz_host(nlon, mlat, nlev) )       ; delz_host    = 0.0
+    allocate ( rho_host(nlon, mlat, nlev) )       ; rho_host    = 0.0
 
-      ! allocate ( diff_t_five     (id, jd, nlev_five) ) ; diff_t_five = 0.0
-      ! allocate ( diff_m_five     (id, jd, nlev_five) ) ; diff_m_five = 0.0
-      ! allocate ( diff_cu_mo_five (id, jd, nlev_five) ) ; diff_cu_mo_five = 0.0
-      ! allocate ( radturbten_five (id, jd, nlev_five))  ; radturbten_five = 0.0
-      ! allocate ( diff_t_clubb_five(id, jd, nlev_five) ); diff_t_clubb_five = 0.0
-
+    !allocate Physics_five and Physics_tendency_five variables
     !---control data
     npz = nlev_five
     Physics_five%control%phys_hydrostatic = p_hydro
@@ -309,9 +275,6 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
         Physics_five%block(n)%z_full = 0.
         Physics_five%block(n)%z_half = 0.
     enddo
-    
-    ! write (*,*) 'nt_prog', nt_prog
-    ! write (*,*) 'ncnst', ncnst  
 
     allocate ( Physics_tendency_five%block(Atm_block%nblks) )
     do n = 1,Atm_block%nblks
@@ -328,6 +291,7 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
       Physics_tendency_five%block(n)%qdiag = 0.
     enddo
 
+    !initialize Rad_flux_five
     do n = 1, size(Rad_flux_five,1)
         allocate (Rad_flux_five(n)%block(Atm_block%nblks))
         do nb = 1, Atm_block%nblks
@@ -335,7 +299,7 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
           jx = Atm_block%jbe(nb) - Atm_block%jbs(nb) + 1
           call Rad_flux_five(n)%block(nb)%alloc ( ix, jx, npz, nonzero_rad_flux_init )
         end do
-      end do
+    end do
 
     !Compute pfull for initial interpolation
     do k=size(pt,3),1,-1
@@ -364,13 +328,13 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
     do k=size(pt_five,3),1,-1
         do j=1,size(pt_five,2)
             do i=1,size(pt_five,1)
-                pf_five(i,j,k) = delp_five(i,j,k)/(peln_five(i,k+1,j)-peln_five(i,k,j))
+              p_full_five(i,j,k) = delp_five(i,j,k)/(peln_five(i,k+1,j)-peln_five(i,k,j))
             enddo
         enddo
     enddo
 
     write (*,*) 'pe_five', pe_five
-    write (*,*) 'pf_five', pf_five
+    write (*,*) 'p_full_five', p_full_five
 
     !initialize state variables: u, v, t, q
     call five_profiles_init(ua, va, pt, q, omga, p_full_host)
@@ -427,8 +391,6 @@ subroutine atmos_physics_driver_inputs_five (Physics_five, Atm_block, Physics_te
           Physics_tendency_five%block(nb)%q_dt = q_dt_five(ibs:ibe,jbs:jbe,:,1:nt_prog)
           Physics_tendency_five%block(nb)%qdiag = q_five(ibs:ibe,jbs:jbe,:,nt_prog+1:ncnst)
       endif
-
-      write (*,*) 'omga_five from input_five', omga_five
   enddo
 
 end subroutine atmos_physics_driver_inputs_five
@@ -445,33 +407,19 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
 
     ! Local variables	
     integer :: nt_tot, nt_prog
-
-    ! real :: delz_host(nlon,mlat,nlev)
-    ! real :: delz_five0(nlon,mlat,nlev_five)
-    
-    ! real :: rho_host(nlon,mlat,nlev)
-    ! real :: rho_five0(nlon,mlat,nlev_five)
   
   !---------------------------------------------------------------------
   !    set up local pointers into the physics input and physics tendency
   !    blocks.
   !---------------------------------------------------------------------
-    real, dimension(:,:,:,:), pointer :: r_host
     real, dimension(:,:,:), pointer :: z_full_host, z_half_host, delp_host
     real, dimension(:,:,:), pointer :: u_dt_host, v_dt_host, t_dt_host
     real, dimension(:,:,:,:), pointer :: r_dt_host, rdiag_host
-    real, dimension(:,:,:), pointer :: t_host
   
-    real, dimension(:,:,:,:), pointer :: r_five0
     real, dimension(:,:,:), pointer :: z_half_five0, delp_five0
     real, dimension(:,:,:), pointer :: u_dt_five0, v_dt_five0, t_dt_five0
     real, dimension(:,:,:,:), pointer :: r_dt_five0, rdiag_five0
-    real, dimension(:,:,:), pointer :: t_five0
-  
-    t_host => Physics_input_block%t
-    r_host => Physics_input_block%q
-    p_full_host = Physics_input_block%p_full
-    p_half_host = Physics_input_block%p_half
+
     z_full_host => Physics_input_block%z_full
     z_half_host => Physics_input_block%z_half
     delp_host => Physics_input_block%delp
@@ -481,11 +429,6 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     r_dt_host => Physics_tendency_block%q_dt
     rdiag_host => Physics_tendency_block%qdiag
 
-    t_five0 => Physics_five_input_block%t
-    r_five0 => Physics_five_input_block%q
-    p_full_five0 = Physics_five_input_block%p_full
-    p_half_five0 = Physics_five_input_block%p_half
-    z_full_five0 = Physics_five_input_block%z_full
     z_half_five0 => Physics_five_input_block%z_half
     delp_five0 => Physics_five_input_block%delp
     u_dt_five0 => Physics_tendency_five_block%u_dt
@@ -494,70 +437,67 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     r_dt_five0 => Physics_tendency_five_block%q_dt
     rdiag_five0 => Physics_tendency_five_block%qdiag
 
-    ! do k=1,nlev
-    !   do j=1,nlon
-    !     do i=1,mlat
-    !       delz_host(i,j,k) = z_half_host(i,j,k) - z_half_host(i,j,k+1)
-    !       rho_host(i,j,k) = delp_host(i,j,k)/(delz_host(i,j,k)*grav)
-    !     enddo
-    !   enddo
-    ! enddo
-  
-    ! do k=1,nlev_five
-    !   do j=1,nlon
-    !     do i=1,mlat
-    !       delz_five0(i,j,k) = z_half_five0(i,j,k) - z_half_five0(i,j,k+1)
-    !       rho_five0(i,j,k) = delp_five0(i,j,k)/(delz_five0(i,j,k)*grav)
-    !     enddo
-    !   enddo
-    ! enddo
+    !pass values to  variables that will not only be used here but also be shared by other modules
+    p_full_host = Physics_input_block%p_full
+    p_half_host = Physics_input_block%p_half
+    p_full_five = Physics_five_input_block%p_full
+    p_half_five = Physics_five_input_block%p_half
+    z_full_five = Physics_five_input_block%z_full
 
-    call get_number_tracers(MODEL_ATMOS, num_tracers=nt_tot, num_prog=nt_prog)
-  
-    do j=1,nlon
-      do i=1,mlat
-    
-        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five0(i,j,:)),&
-        dble(rho_host(i,j,:)),dble(rho_five0(i,j,:)),dble(t_dt_host(i,j,:)),t_dt_five0(i,j,:)) 
-  
-        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five0(i,j,:)),&
-        dble(rho_host(i,j,:)),dble(rho_five0(i,j,:)),dble(u_dt_host(i,j,:)),u_dt_five0(i,j,:)) 
-  
-        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five0(i,j,:)),&
-        dble(rho_host(i,j,:)),dble(rho_five0(i,j,:)),dble(v_dt_host(i,j,:)),v_dt_five0(i,j,:)) 
-        
-        do p = 1, nt_prog
-          call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five0(i,j,:)),&
-          dble(rho_host(i,j,:)),dble(rho_five0(i,j,:)),dble(r_dt_host(i,j,:, p)),r_dt_five0(i,j,:, p)) 
+    do k=1,nlev
+      do j=1,nlon
+        do i=1,mlat
+          delz_host(i,j,k) = z_half_host(i,j,k) - z_half_host(i,j,k+1)
+          rho_host(i,j,k) = delp_host(i,j,k)/(delz_host(i,j,k)*grav)
         enddo
-
-        do p = nt_prog + 1, ncnst
-          call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five0(i,j,:)),&
-          dble(rho_host(i,j,:)),dble(rho_five0(i,j,:)),dble(rdiag_host(i,j,:, p)),rdiag_five0(i,j,:, p)) 
+      enddo
+    enddo
+  
+    do k=1,nlev_five
+      do j=1,nlon
+        do i=1,mlat
+          delz_five(i,j,k) = z_half_five0(i,j,k) - z_half_five0(i,j,k+1)
+          rho_five(i,j,k) = delp_five0(i,j,k)/(delz_five(i,j,k)*grav)
         enddo
-
-        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five0(i,j,:)),&
-        dble(rho_host(i,j,:)),dble(rho_five0(i,j,:)),dble(Rad_flux_block%tdt_rad(i,j,:)),Rad_flux_five_block%tdt_rad(i,j,:)) 
-          
-        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five0(i,j,:)),&
-        dble(rho_host(i,j,:)),dble(rho_five0(i,j,:)),dble(Rad_flux_block%tdt_lw(i,j,:)),Rad_flux_five_block%tdt_lw(i,j,:)) 
-          
-        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five0(i,j,:)),&
-        dble(rho_host(i,j,:)),dble(rho_five0(i,j,:)),dble(Rad_flux_block%extinction(i,j,:)),Rad_flux_five_block%extinction(i,j,:)) 
       enddo
     enddo
 
+    call get_number_tracers(MODEL_ATMOS, num_tracers=nt_tot, num_prog=nt_prog)
     
-    ! write (*,*) 'tdt_rad_host', Rad_flux_block%tdt_rad
-    ! write (*,*) 'tdt_rad_five0', Rad_flux_five_block%tdt_rad
+    !interpolate from five grid to host grid
+    do j=1,nlon
+      do i=1,mlat
+    
+        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five(i,j,:)),&
+        dble(rho_host(i,j,:)),dble(rho_five(i,j,:)),dble(t_dt_host(i,j,:)),t_dt_five0(i,j,:)) 
+  
+        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five(i,j,:)),&
+        dble(rho_host(i,j,:)),dble(rho_five(i,j,:)),dble(u_dt_host(i,j,:)),u_dt_five0(i,j,:)) 
+  
+        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five(i,j,:)),&
+        dble(rho_host(i,j,:)),dble(rho_five(i,j,:)),dble(v_dt_host(i,j,:)),v_dt_five0(i,j,:)) 
+        
+        do p = 1, nt_prog
+          call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five(i,j,:)),&
+          dble(rho_host(i,j,:)),dble(rho_five(i,j,:)),dble(r_dt_host(i,j,:, p)),r_dt_five0(i,j,:, p)) 
+        enddo
 
-    ! write (*,*) 'tdt_lw_host', Rad_flux_block%tdt_lw
-    ! write (*,*) 'tdt_lw_five0', Rad_flux_five_block%tdt_lw
+        do p = nt_prog + 1, ncnst
+          call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five(i,j,:)),&
+          dble(rho_host(i,j,:)),dble(rho_five(i,j,:)),dble(rdiag_host(i,j,:, p)),rdiag_five0(i,j,:, p)) 
+        enddo
 
-    t_host => null()
-    r_host => null()
-    ! p_full_host => null()
-    ! p_half_host => null()
+        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five(i,j,:)),&
+        dble(rho_host(i,j,:)),dble(rho_five(i,j,:)),dble(Rad_flux_block%tdt_rad(i,j,:)),Rad_flux_five_block%tdt_rad(i,j,:)) 
+          
+        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five(i,j,:)),&
+        dble(rho_host(i,j,:)),dble(rho_five(i,j,:)),dble(Rad_flux_block%tdt_lw(i,j,:)),Rad_flux_five_block%tdt_lw(i,j,:)) 
+          
+        call tendency_low_to_high(dble(z_full_host(i,j,:)),dble(z_half_host(i,j,:)),dble(z_full_five(i,j,:)),&
+        dble(rho_host(i,j,:)),dble(rho_five(i,j,:)),dble(Rad_flux_block%extinction(i,j,:)),Rad_flux_five_block%extinction(i,j,:)) 
+      enddo
+    enddo
+
     z_full_host => null()
     z_half_host => null()
     u_dt_host => null()
@@ -566,11 +506,6 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     r_dt_host => null()
     rdiag_host => null()
 
-    t_five0 => null()
-    r_five0 => null()
-    ! p_full_five0 => null()
-    ! p_half_five0 => null()
-    ! z_full_five0 => null()
     z_half_five0 => null()
     delp_five0 => null()
     u_dt_five0 => null()
@@ -579,7 +514,7 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     r_dt_five0 => null()
     rdiag_five0 => null()
 
-  end subroutine five_tend_low_to_high
+end subroutine five_tend_low_to_high
 
   subroutine five_tend_high_to_low (Physics_five_input_block, Physics_tendency_five_block, &
     Physics_input_block, Physics_tendency_block)
@@ -591,49 +526,28 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     type (physics_tendency_block_type), intent(inout)  :: Physics_tendency_block
       ! Local variables	
     integer :: nt_tot, nt_prog
-
-    ! ! Local variables	
-    ! real :: delz_host(nlon,mlat,nlev)
-    ! real :: delz_five0(nlon,mlat,nlev_five)
-    
-    ! real :: rho_host(nlon,mlat,nlev)
-    ! real :: rho_five0(nlon,mlat,nlev_five)
   
   !---------------------------------------------------------------------
   !    set up local pointers into the physics input and physics tendency
   !    blocks.
   !---------------------------------------------------------------------
-    real, dimension(:,:,:,:), pointer :: r_host
-    real, dimension(:,:,:), pointer :: z_full_host, z_half_host, delp_host
+    real, dimension(:,:,:), pointer :: z_full_host, z_half_host
     real, dimension(:,:,:), pointer :: u_dt_host, v_dt_host, t_dt_host
     real, dimension(:,:,:,:), pointer :: r_dt_host, rdiag_host
-    real, dimension(:,:,:), pointer :: u_host, v_host, t_host
   
-    real, dimension(:,:,:), pointer :: z_half_five0, delp_five0
+    real, dimension(:,:,:), pointer :: z_half_five0
     real, dimension(:,:,:), pointer :: u_dt_five0, v_dt_five0, t_dt_five0
     real, dimension(:,:,:,:), pointer :: r_dt_five0, rdiag_five0
   
-    u_host => Physics_input_block%u
-    v_host => Physics_input_block%v
-    t_host => Physics_input_block%t
-    r_host => Physics_input_block%q
-  
-    ! p_full_host => Physics_input_block%p_full
-    ! p_half_host => Physics_input_block%p_half
     z_full_host => Physics_input_block%z_full
     z_half_host => Physics_input_block%z_half
-    delp_host => Physics_input_block%delp
     u_dt_host => Physics_tendency_block%u_dt
     v_dt_host => Physics_tendency_block%v_dt
     t_dt_host => Physics_tendency_block%t_dt
     r_dt_host => Physics_tendency_block%q_dt
     rdiag_host => Physics_tendency_block%qdiag
 
-    ! p_full_five0 => Physics_five_input_block%p_full
-    ! p_half_five0 => Physics_five_input_block%p_half
-    ! z_full_five0 => Physics_five_input_block%z_full
     z_half_five0 => Physics_five_input_block%z_half
-    delp_five0 => Physics_five_input_block%delp
     u_dt_five0 => Physics_tendency_five_block%u_dt
     v_dt_five0 => Physics_tendency_five_block%v_dt
     t_dt_five0 => Physics_tendency_five_block%t_dt
@@ -641,40 +555,31 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     rdiag_five0 => Physics_tendency_five_block%qdiag
   
     call get_number_tracers(MODEL_ATMOS, num_tracers=nt_tot, num_prog=nt_prog)
-
+    !average from host grid to five grid
     do j=1,nlon
       do i=1,mlat
         
-        call masswgt_vert_avg(rho_host(i,j,:),rho_five0(i,j,:),delz_host(i,j,:),delz_five0(i,j,:),&
-        p_half_host(i,j,:),p_full_five0(i,j,:),p_full_host(i,j,:), t_dt_five0(i,j,:),t_dt_host(i,j,:))
+        call masswgt_vert_avg(rho_host(i,j,:),rho_five(i,j,:),delz_host(i,j,:),delz_five(i,j,:),&
+        p_half_host(i,j,:),p_full_five(i,j,:),p_full_host(i,j,:), t_dt_five0(i,j,:),t_dt_host(i,j,:))
   
-        call masswgt_vert_avg(rho_host(i,j,:),rho_five0(i,j,:),delz_host(i,j,:),delz_five0(i,j,:),&
-        p_half_host(i,j,:),p_full_five0(i,j,:),p_full_host(i,j,:), u_dt_five0(i,j,:),u_dt_host(i,j,:))
+        call masswgt_vert_avg(rho_host(i,j,:),rho_five(i,j,:),delz_host(i,j,:),delz_five(i,j,:),&
+        p_half_host(i,j,:),p_full_five(i,j,:),p_full_host(i,j,:), u_dt_five0(i,j,:),u_dt_host(i,j,:))
   
-        call masswgt_vert_avg(rho_host(i,j,:),rho_five0(i,j,:),delz_host(i,j,:),delz_five0(i,j,:),&
-        p_half_host(i,j,:),p_full_five0(i,j,:),p_full_host(i,j,:), v_dt_five0(i,j,:),v_dt_host(i,j,:))
+        call masswgt_vert_avg(rho_host(i,j,:),rho_five(i,j,:),delz_host(i,j,:),delz_five(i,j,:),&
+        p_half_host(i,j,:),p_full_five(i,j,:),p_full_host(i,j,:), v_dt_five0(i,j,:),v_dt_host(i,j,:))
   
         do p = 1, nt_prog
-          call masswgt_vert_avg(rho_host(i,j,:),rho_five0(i,j,:),delz_host(i,j,:),delz_five0(i,j,:),&
-          p_half_host(i,j,:),p_full_five0(i,j,:),p_full_host(i,j,:), r_dt_five0(i,j,:,p),r_dt_host(i,j,:, p))
+          call masswgt_vert_avg(rho_host(i,j,:),rho_five(i,j,:),delz_host(i,j,:),delz_five(i,j,:),&
+          p_half_host(i,j,:),p_full_five(i,j,:),p_full_host(i,j,:), r_dt_five0(i,j,:,p),r_dt_host(i,j,:, p))
         enddo
 
         do p = nt_prog + 1, ncnst
-          call masswgt_vert_avg(rho_host(i,j,:),rho_five0(i,j,:),delz_host(i,j,:),delz_five0(i,j,:),&
-          p_half_host(i,j,:),p_full_five0(i,j,:),p_full_host(i,j,:), rdiag_five0(i,j,:,p),rdiag_host(i,j,:,p))
+          call masswgt_vert_avg(rho_host(i,j,:),rho_five(i,j,:),delz_host(i,j,:),delz_five(i,j,:),&
+          p_half_host(i,j,:),p_full_five(i,j,:),p_full_host(i,j,:), rdiag_five0(i,j,:,p),rdiag_host(i,j,:,p))
         enddo
-
-
       enddo
-  
     enddo
   
-    u_host => null()
-    v_host => null()
-    t_host => null()
-    r_host => null()
-    ! p_full_host => null()
-    ! p_half_host => null()
     z_full_host => null()
     z_half_host => null()
     u_dt_host => null()
@@ -683,11 +588,7 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     r_dt_host => null()
     rdiag_host => null()
 
-    ! p_full_five0 => null()
-    ! p_half_five0 => null()
-    ! z_full_five0 => null()
     z_half_five0 => null()
-    delp_five0 => null()
     u_dt_five0 => null()
     v_dt_five0 => null()
     t_dt_five0 => null()
@@ -707,16 +608,12 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
 
     call get_eta_level_five ( nlev_five, pref_five(nlev_five+1,1), pref_five(1,1), dum1d )
     call get_eta_level_five ( nlev_five, pref_five(nlev_five+1,2), pref_five(1,2), dum1d )
-  
-    write (*,*) 'pref_five', pref_five
-    write (*,*) 'dum1d', dum1d
 
     p_ref_five = pref_five
 
   end subroutine atmosphere_pref_five
 
   !-----------------------------------------------------------------------
-
  subroutine get_eta_level_five(km, p_s, pf, ph, pscale)
 
   integer, intent(in) :: km
@@ -765,8 +662,8 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
 
     do j=1,nlon
       do i=1,mlat
-          call masswgt_vert_avg(rho_host(i,j,:),rho_five0(i,j,:),delz_host(i,j,:),delz_five0(i,j,:),&
-          p_half_host(i,j,:),p_full_five0(i,j,:),p_full_host(i,j,:), varin(i,j,:),varout(i,j,:))
+          call masswgt_vert_avg(rho_host(i,j,:),rho_five(i,j,:),delz_host(i,j,:),delz_five(i,j,:),&
+          p_half_host(i,j,:),p_full_five(i,j,:),p_full_host(i,j,:), varin(i,j,:),varout(i,j,:))
       enddo
     enddo
   end subroutine five_var_high_to_low
@@ -783,7 +680,7 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
 
     p_full_host = Physics_input_block%p_full
     p_half_host = Physics_input_block%p_half
-    p_full_five0 = Physics_five_input_block%p_full
+    p_full_five = Physics_five_input_block%p_full
 
     z_half_host => Physics_input_block%z_half
     z_half_five0 => Physics_five_input_block%z_half
@@ -802,8 +699,8 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     do k=1,nlev_five
       do j=1,nlon
         do i=1,mlat
-          delz_five0(i,j,k) = z_half_five0(i,j,k) - z_half_five0(i,j,k+1)
-          rho_five0(i,j,k) = delp_five0(i,j,k)/(delz_five0(i,j,k)*grav)
+          delz_five(i,j,k) = z_half_five0(i,j,k) - z_half_five0(i,j,k+1)
+          rho_five(i,j,k) = delp_five0(i,j,k)/(delz_five(i,j,k)*grav)
         enddo
       enddo
     enddo
@@ -811,11 +708,8 @@ subroutine five_tend_low_to_high (Physics_input_block, Physics_tendency_block, R
     do j=1,nlon
       do i=1,mlat
         do p = 1, size(varin, 4)
-          call masswgt_vert_avg(rho_host(i,j,:),rho_five0(i,j,:),delz_host(i,j,:),delz_five0(i,j,:),&
-          p_half_host(i,j,:),p_full_five0(i,j,:),p_full_host(i,j,:), varin(i,j,:,p),varout(i,j,:,p))
-
-          write (*,*) 'varin five_var_high_to_low', varin(i,j,:,p)
-          write (*,*) 'varout five_var_high_to_low', varout(i,j,:,p)
+          call masswgt_vert_avg(rho_host(i,j,:),rho_five(i,j,:),delz_host(i,j,:),delz_five(i,j,:),&
+          p_half_host(i,j,:),p_full_five(i,j,:),p_full_host(i,j,:), varin(i,j,:,p),varout(i,j,:,p))
 
         enddo
       enddo
@@ -968,23 +862,55 @@ subroutine five_profiles_init(u_host, v_host, t_host, q_host, omga_host, pf_host
   
       do j=1,size(pt_five,2)
         do i=1,size(pt_five,1)
-                  ! Now interpolate onto the FIVE grid
-          call linear_interp(pf_host(i,j,:),pf_five(i,j,:),t_host(i,j,:),pt_five(i,j,:),nlev,nlev_five)
-          call linear_interp(pf_host(i,j,:),pf_five(i,j,:),u_host(i,j,:),ua_five(i,j,:),nlev,nlev_five)
-          call linear_interp(pf_host(i,j,:),pf_five(i,j,:),v_host(i,j,:),va_five(i,j,:),nlev,nlev_five)
-          call linear_interp(pf_host(i,j,:),pf_five(i,j,:),omga_host(i,j,:),omga_five(i,j,:),nlev,nlev_five)
+          ! Now interpolate onto the FIVE grid
+          call linear_interp(pf_host(i,j,:),p_full_five(i,j,:),t_host(i,j,:),pt_five(i,j,:),nlev,nlev_five)
+          call linear_interp(pf_host(i,j,:),p_full_five(i,j,:),u_host(i,j,:),ua_five(i,j,:),nlev,nlev_five)
+          call linear_interp(pf_host(i,j,:),p_full_five(i,j,:),v_host(i,j,:),va_five(i,j,:),nlev,nlev_five)
+          call linear_interp(pf_host(i,j,:),p_full_five(i,j,:),omga_host(i,j,:),omga_five(i,j,:),nlev,nlev_five)
 
           ! For Q constituents 
           do p=1,ncnst
-            call linear_interp(pf_host(i,j,:),pf_five(i,j,:),q_host(i,j,:,p),q_five(i,j,:,p),nlev,nlev_five)
+            call linear_interp(pf_host(i,j,:),p_full_five(i,j,:),q_host(i,j,:,p),q_five(i,j,:,p),nlev,nlev_five)
           enddo
         enddo
       enddo
-  
-      write (*,*) 'omga_host', omga_host
-      write (*,*) 'omga_five', omga_five
-
 end subroutine five_profiles_init
+
+!#######################################################################
+! Subroutine to apply BOMEX forcings
+
+subroutine update_bomex_forc_five()
+  #include "fv_arrays.h"
+  #include "fv_point.inc"
+  
+  write (*,*) 'ps', ps
+  
+  ! --- update pe_five, peln_five, and delp_five
+  ps_five = ps
+  do k=1,size(pt_five,3)
+    do j=1,size(ps_five,2)
+      do i=1,size(ps_five,1)
+        delp_five(i,j,k) = ak_five(k+1)-ak_five(k) + ps_five(i,j)*(bk_five(k+1)-bk_five(k))
+      enddo
+    enddo
+  enddo
+  
+  call p_var(nlon, mlat, nlev_five, 1, mlat, ak_five(1), delp_five, ps_five,     &
+         pe_five, peln_five,  pk_five,  pkz_five,  2./7.)
+  
+    ! --- compute large-scale subsidence
+    do k=1,nlev_five
+       if ( z_full_five(1,1,k) < 1500.0 ) then
+          omga_five(:,:,k) = p_full_five(1,1,k)/(rdgas*pt_five(1,1,k))*grav  &
+                           * (0.0065/1500.0)*z_full_five(1,1,k)
+       elseif ( z_full_five(1,1,k) < 2100.0 ) then
+          omga_five(:,:,k) = p_full_five(1,1,k)/(rdgas*pt_five(1,1,k))*grav  &
+                           * ( 0.0065 - (0.0065/(2100.-1500.))*(z_full_five(1,1,k)-1500.) )
+       else
+          omga_five(:,:,k) = 0.
+       end if
+    end do
+end subroutine update_bomex_forc_five
 
 subroutine tendency_low_to_high(zm_in, zi_in, &
     zm_five_in, &
@@ -1337,11 +1263,7 @@ subroutine tendency_low_to_high(zm_in, zi_in, &
     do k = 1,nlev_five
     ten_high(k) = df_zs(nlev_five-k+1)
     enddo
-  
-    ! print *, '-------------------------'
-    ! print *, size(ten_high)
-    ! print *,ten_high
-    end subroutine tendency_low_to_high 
+  end subroutine tendency_low_to_high 
 
 !#######################################################################
 
@@ -1398,9 +1320,7 @@ subroutine fv_compute_p_z (npz, phis, pe, peln, delp, delz, pt, q_sph, p_full, p
       enddo
     endif
 
- end subroutine fv_compute_p_z
-
-
+end subroutine fv_compute_p_z
 
 subroutine linear_interp(x1,x2,y1,y2,km1,km2)
     implicit none
@@ -1486,45 +1406,7 @@ subroutine masswgt_vert_avg(&
   
   return
   
-  end subroutine masswgt_vert_avg    
-
-
-  !#######################################################################
-! Subroutine to apply BOMEX forcings
-
-subroutine update_bomex_forc_five()
-#include "fv_arrays.h"
-#include "fv_point.inc"
-
-write (*,*) 'ps', ps
-
-! --- update pe_five, peln_five, and delp_five
-ps_five = ps
-do k=1,size(pt_five,3)
-  do j=1,size(ps_five,2)
-    do i=1,size(ps_five,1)
-      delp_five(i,j,k) = ak_five(k+1)-ak_five(k) + ps_five(i,j)*(bk_five(k+1)-bk_five(k))
-    enddo
-  enddo
-enddo
-
-call p_var(nlon, mlat, nlev_five, 1, mlat, ak_five(1), delp_five, ps_five,     &
-       pe_five, peln_five,  pk_five,  pkz_five,  2./7.)
-
-  ! --- compute large-scale subsidence
-  do k=1,nlev_five
-     if ( z_full_five0(1,1,k) < 1500.0 ) then
-        omga_five(:,:,k) = p_full_five0(1,1,k)/(rdgas*pt_five(1,1,k))*grav  &
-                         * (0.0065/1500.0)*z_full_five0(1,1,k)
-     elseif ( z_full_five0(1,1,k) < 2100.0 ) then
-        omga_five(:,:,k) = p_full_five0(1,1,k)/(rdgas*pt_five(1,1,k))*grav  &
-                         * ( 0.0065 - (0.0065/(2100.-1500.))*(z_full_five0(1,1,k)-1500.) )
-     else
-        omga_five(:,:,k) = 0.
-     end if
-  end do
-end subroutine update_bomex_forc_five
-
+end subroutine masswgt_vert_avg    
 
 subroutine p_var(im, jm, km, jfirst, jlast, ptop,    &
   delp,  ps,  pe, peln, pk, pkz,      &
