@@ -118,8 +118,9 @@ module scm_forc_mod
    use      scm_mc3e_mod, only:  mc3e_data_read, mc3e_forc_init, mc3e_forc_end,        &
                                  update_mc3e_forc, mc3e_forc_diagnostic_init,         &
                                  get_mc3e_sst, mc3e_surface_flux_loop, get_mc3e_sfc
-   !yzheng
+   !yzheng: modules and variables related to FIVE
    use      five_mod, only: update_bomex_forc_five
+   use      five_mod, only: do_five
 implicit none
 
 public scm_data_read, scm_forc_init, scm_forc_end, update_scm_forc,  &
@@ -773,7 +774,7 @@ select case (trim(experiment))
    case ('bomex') !h1g
       call update_bomex_forc(time_interp,time_diag,dt_int,elev)
       !yzheng
-      call update_bomex_forc_five()
+      if (do_five) call update_bomex_forc_five()
 
    case ('dcbl') !h1g
       call update_dcbl_forc(time_interp,time_diag,dt_int,elev)
