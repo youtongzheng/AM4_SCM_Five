@@ -186,7 +186,7 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
     !should replace ps0 with the ps(1,1)
     call five_pressure_init(pe(1,:,1), ak/(0.01*ps0),bk/0.01, ps0, nlev_five)
 
-    write (*,*) 'initial ps', ps
+    ! write (*,*) 'initial ps', ps
 
     !allocate five variables
     allocate ( ua_five(nlon, mlat, nlev_five) )       ; ua_five    = 0.0
@@ -883,7 +883,7 @@ subroutine update_bomex_forc_five()
   #include "fv_arrays.h"
   #include "fv_point.inc"
   
-  write (*,*) 'ps', ps
+  ! write (*,*) 'ps', ps
   
   ! --- update pe_five, peln_five, and delp_five
   ps_five = ps
