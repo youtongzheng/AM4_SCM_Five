@@ -881,9 +881,9 @@ end subroutine five_profiles_init
 
 subroutine update_bomex_forc_five()
   #include "fv_arrays.h"
-  #include "fv_point.inc"
+  ! #include "fv_point.inc"
   
-  ! write (*,*) 'ps', ps
+  write (*,*) 'ps', ps
   
   ! --- update pe_five, peln_five, and delp_five
   ps_five = ps
