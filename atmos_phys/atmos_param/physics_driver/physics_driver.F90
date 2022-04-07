@@ -664,7 +664,7 @@ type(physics_type),           intent(inout),  optional :: Physics_five !yzheng
                            tracer_init_clock
       real, dimension(:,:,:),   allocatable :: phalf
       real, dimension(:,:,:,:), allocatable :: trs
-      if (do_five) real, dimension(:,:,:,:), allocatable :: trs_tmp !yzheng: the variable that stores the native-grid trs when do_five is true (trs is at five grid).
+      real, dimension(:,:,:,:), allocatable :: trs_tmp !yzheng: the variable that stores the native-grid trs when do_five is true (trs is at five grid).
 !---------------------------------------------------------------------
 !  local variables:
 !

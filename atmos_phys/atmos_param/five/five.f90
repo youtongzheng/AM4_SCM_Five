@@ -912,357 +912,357 @@ subroutine update_bomex_forc_five()
 end subroutine update_bomex_forc_five
 
 subroutine tendency_low_to_high(zm_in, zi_in, &
-    zm_five_in, &
-    rho_low_in, rho_five_in, &
-    ten_low,ten_high)
+  zm_five_in, &
+  rho_low_in, rho_five_in, &
+  ten_low,ten_high)
+
+  ! Subroutine to compute the tendency from the low
+  !   resolution to high resolution E3SM grid.  This code
+  !   was adopted from the FIVE implementation into SAM,
+  !   obtained by Peter Bogenschutz from Tak Yamaguchi.
+  !   SAM code assumes that the surface is index 1, whereas
+  !   E3SM assumes that the surface is index pver(p).  Thus,
+  !   for simplicity, we need to "flip" the arrays.  
+  ! This interpolation routine is based on that of 
+  !   Sheng and Zwiers (1998) and implemented as 
+  !   documented in Yamaguchi et al. (2017) appendix B.
+  implicit none
+
+  ! Input variables
+  real*8, intent(in) :: zm_in(nlev) ! midpoint levels E3SM
+  real*8, intent(in) :: zi_in(nlev + 1) ! interface levels E3SM
+  real*8, intent(in) :: zm_five_in(nlev_five) ! midpoint levels for FIVE
+  real*8, intent(in) :: ten_low(nlev)
+  real*8, intent(in) :: rho_low_in(nlev)
+  real*8, intent(in) :: rho_five_in(nlev_five)
+
+  ! Output variables
+  real, intent(out) :: ten_high(nlev_five)
+
+  ! Local variables
+  integer, parameter :: ml=1, mu=1, lda=2*ml+mu+1
+  real*8 :: zm(nlev) ! flipped version of zm_in
+  real*8 :: zi(nlev + 1) ! flipped version of zi_in
+  real*8 :: df_z(nlev) 
+  real*8 :: rho_low(nlev)
+  real*8 :: rho_zs(nlev_five)
+  real*8 :: zm_five(nlev_five) ! flipped
+  real*8 :: dz ! distance of lowest level
+  real*8 :: alpha
+  real*8 :: adz_dn(nlev)
+  real*8 :: adz_up(nlev)
+  real*8 :: a(lda,nlev)
+  real*8 :: adz(nlev) ! ratio of the thickness of scalar levels to dz
+  real*8 :: adzw(nlev) ! ratio of the thickness of w levels to dz
+  real*8 :: ipiv(nlev)
+  integer :: info
+  real*8 :: weight(nlev_five)
+  real*8 :: rdf_z(nlev)
+  real*8 :: rdf_zs_ml(nlev) ! mid-layer target value
+  real*8 :: df_zs(nlev_five)
+  real*8, dimension(nlev + 1) :: rdf_zm
+  real*8, dimension(nlev) :: rdf_zm_dn, rdf_zm_up
+  real*8, dimension(nlev) :: c0, c1, c2, c3, ic1, ic2, ic3
+  real*8 :: b(nlev)
+
+  logical, dimension(nlev) :: spurious
+  logical :: cnd1, cnd2, cnd3, cnd4, cnd5
+
+  logical :: do_limit
+
+  integer :: i, i1, i2, i3, i4
+  integer :: k, km3, km2, km1, k00
+  integer :: kp1, kp2, ierr
+  integer :: zi1, zi2
+  integer :: i4zi1
+
+  ! external dgbtrf
+  ! external dgbtrs
+
+  ! Construct tendency profile from E3SM grid to FIVE grid
+
+  ! The constructed tendency profile satisfies layer mean average
+
+  ! If no levels are added via FIVE just return a copy
+  if (five_add_nlevels .eq. 0) then
+  ten_high(1:nlev) = ten_low(1:nlev)
+  return
+  endif
+
+  ! First let's "flip" things so lowest level index = 1
+  do k=1,nlev
+  zm(k) = zm_in(nlev-k+1)
+  rho_low(k) = rho_low_in(nlev-k+1)
+  df_z(k) = ten_low(nlev-k+1)
+  enddo
+
+  do k=1,nlev + 1
+  zi(k) = zi_in(nlev + 1-k+1)
+  enddo
+
+  do k=1,nlev_five
+  zm_five(k) = zm_five_in(nlev_five-k+1)
+  rho_zs(k) = rho_five_in(nlev_five-k+1)
+  enddo  
   
-    ! Subroutine to compute the tendency from the low
-    !   resolution to high resolution E3SM grid.  This code
-    !   was adopted from the FIVE implementation into SAM,
-    !   obtained by Peter Bogenschutz from Tak Yamaguchi.
-    !   SAM code assumes that the surface is index 1, whereas
-    !   E3SM assumes that the surface is index pver(p).  Thus,
-    !   for simplicity, we need to "flip" the arrays.  
-    ! This interpolation routine is based on that of 
-    !   Sheng and Zwiers (1998) and implemented as 
-    !   documented in Yamaguchi et al. (2017) appendix B.
-    implicit none
-  
-    ! Input variables
-    real*8, intent(in) :: zm_in(nlev) ! midpoint levels E3SM
-    real*8, intent(in) :: zi_in(nlev + 1) ! interface levels E3SM
-    real*8, intent(in) :: zm_five_in(nlev_five) ! midpoint levels for FIVE
-    real*8, intent(in) :: ten_low(nlev)
-    real*8, intent(in) :: rho_low_in(nlev)
-    real*8, intent(in) :: rho_five_in(nlev_five)
-  
-    ! Output variables
-    real, intent(out) :: ten_high(nlev_five)
-  
-    ! Local variables
-    integer, parameter :: ml=1, mu=1, lda=2*ml+mu+1
-    real*8 :: zm(nlev) ! flipped version of zm_in
-    real*8 :: zi(nlev + 1) ! flipped version of zi_in
-    real*8 :: df_z(nlev) 
-    real*8 :: rho_low(nlev)
-    real*8 :: rho_zs(nlev_five)
-    real*8 :: zm_five(nlev_five) ! flipped
-    real*8 :: dz ! distance of lowest level
-    real*8 :: alpha
-    real*8 :: adz_dn(nlev)
-    real*8 :: adz_up(nlev)
-    real*8 :: a(lda,nlev)
-    real*8 :: adz(nlev) ! ratio of the thickness of scalar levels to dz
-    real*8 :: adzw(nlev) ! ratio of the thickness of w levels to dz
-    real*8 :: ipiv(nlev)
-    integer :: info
-    real*8 :: weight(nlev_five)
-    real*8 :: rdf_z(nlev)
-    real*8 :: rdf_zs_ml(nlev) ! mid-layer target value
-    real*8 :: df_zs(nlev_five)
-    real*8, dimension(nlev + 1) :: rdf_zm
-    real*8, dimension(nlev) :: rdf_zm_dn, rdf_zm_up
-    real*8, dimension(nlev) :: c0, c1, c2, c3, ic1, ic2, ic3
-    real*8 :: b(nlev)
-  
-    logical, dimension(nlev) :: spurious
-    logical :: cnd1, cnd2, cnd3, cnd4, cnd5
-  
-    logical :: do_limit
-  
-    integer :: i, i1, i2, i3, i4
-    integer :: k, km3, km2, km1, k00
-    integer :: kp1, kp2, ierr
-    integer :: zi1, zi2
-    integer :: i4zi1
-  
-    ! external dgbtrf
-    ! external dgbtrs
-  
-    ! Construct tendency profile from E3SM grid to FIVE grid
-  
-    ! The constructed tendency profile satisfies layer mean average
-  
-    ! If no levels are added via FIVE just return a copy
-    if (five_add_nlevels .eq. 0) then
-    ten_high(1:nlev) = ten_low(1:nlev)
-    return
-    endif
-  
-    ! First let's "flip" things so lowest level index = 1
-    do k=1,nlev
-    zm(k) = zm_in(nlev-k+1)
-    rho_low(k) = rho_low_in(nlev-k+1)
-    df_z(k) = ten_low(nlev-k+1)
-    enddo
-  
-    do k=1,nlev + 1
-    zi(k) = zi_in(nlev + 1-k+1)
-    enddo
-  
-    do k=1,nlev_five
-    zm_five(k) = zm_five_in(nlev_five-k+1)
-    rho_zs(k) = rho_five_in(nlev_five-k+1)
-    enddo  
-    
-    zi1 = nlev-five_bot_k + 1
-    zi2 = nlev-five_top_k + 1
-  
-    dz=zi(2)
-  
-    ! define adz and adzw
-    do k=2,nlev
-    adzw(k) = (zm(k)-zm(k-1))/dz
-    enddo
-    adzw(1) = 1._8
-  
-    adz(1) = 1._8
-    do k=2,nlev-1
-    adz(k) = 0.5*(zm(k+1)-zm(k-1))/dz
-    enddo
-    adz(nlev) = adzw(nlev)
-  
-    ! Prepare coefficients
-  
-    ! If the location of the mid-layer point is optionally specified then following variables
-    ! are required to be computed every time this function is called.
-  
-    ! Distance from the mid-layer level to the host model lower/upper interface value divided
-    ! by dz. Here the mid-layer level is z(k).
-  
-    do k=1,nlev
-    adz_dn(k) = (zm(k) - zi(k))/dz
-    enddo
-  
-    do k=1,nlev
-    adz_up(k) = (zi(k+1) - zm(k))/dz
-    enddo
-  
-    ! For solving system of equations
-    ! The j-th column of the matrix A is stored in the j-th column of the array a as follows:
-    !    a(ml+mu+1+i-j,j) = A(i,j) for max(1,j-mu)<=i<=min(nzm,j+ml)
-    ! Set up superdiagonal, diagonal, subdiagonal component of the matrix
-    a(:,:) = 0._8
-    ! Superdiagonal 
-    do k=2,nlev
-    a(2,k)=adz_up(k-1)**2/(adz(k)*adzw(k-1))*0.5_8
-    enddo
-    ! Diagonal
-    k = 1
-    a(3,1) = (adz_dn(1) + adzw(1) + adz_up(1) * adz_dn(2) / adz(2))/adzw(1) * 0.5_8
-    do k=2,nlev
-    kp1=min(k+1,nlev)
-    a(3,k) = (adz_up(k-1) * adz_dn(k) / adz(k) + adzw(k) & 
-      + adz_up(k) * adz_dn(kp1) / adz(kp1) ) / adzw(k) * 0.5
-    !+ adz_dn(kp1) used to be adz_dn(k)
-    enddo
-    ! Subdiagonal
-    do k=1, nlev
-    a(4,k) = adz_dn(k)**2 / (adz(k) * adzw(k))*0.5
-    enddo
-  
-    ! Factor the matrix with LAPACK, BLAS
-    call dgbtrf( nlev, nlev, ml, mu, a, lda, ipiv, info )    
-  
-    ! For interpolation
-    i4=0
-    do k=1,zi1-1
-    i4 = i4 + 1
-    enddo
-  
-    c0(:) = 0._8
-    c1(:) = 0._8
-    c2(:) = 0._8
-    c3(:) = 0._8
-    ic1(:) = 0._8
-    ic2(:) = 0._8
-    ic3(:) = 0._8
-  
-    weight(:) = 0._8
-  
-    i4zi1 = i4
-    do k = zi1, zi2
-    i1 = i4 + 1
-    if (mod(five_add_nlevels,2) .ne. 0 ) then
-    i2 = i1 + (five_add_nlevels+1) / 2 - 1 
-    else
-    i2 = i1 + five_add_nlevels / 2 - 1 
-    end if
-    i3 = i2 + 1
-    i4 = i1 + five_add_nlevels 
-    ! weight for linear interpolation
-    weight(i1:i2) = ( zm_five(i1:i2) - zi(k) ) / ( zm(k) - zi(k) )
-    weight(i3:i4) = ( zm_five(i3:i4) - zi(k+1) ) / ( zm(k) - zi(k+1) ) 
-    ! c1, c2, c3
-    c0(k) = 2.0_8 * (zi(k+1) - zi(k))
-    c1(k) = zi(k+1) - zi(k)
-    c2(k) = zm(k) - zi(k)
-    c3(k) = zi(k+1) - zm(k)
-  
-    ic1(k) = 1.0_8 / c1(k)
-    ic2(k) = 1.0_8 / c2(k) 
-    ic3(k) = 1.0_8 / c3(k)            
-  
-    enddo
-  
-    ! add flag computed?
-  
-    ! Mass weight inout value
-    rdf_z(:) = rho_low(:) * df_z(:)
-  
-    ! Solve system of equations to get mid-layer target value
-    ! Solve the linear system with LAPACK, BLAS
-    ! input b wil be solution when output
-    b(:) = rdf_z(:)
-    call dgbtrs('n', nlev, ml, mu, 1, a, lda, ipiv, b, nlev, info)
-    rdf_zs_ml(:) = b(:)
-  
-    ! Interface target value
-    rdf_zm(1) = rdf_zs_ml(1)
-    do k = 2, nlev
-    rdf_zm(k) = adz_dn(k) / adz(k) * rdf_zs_ml(k-1) & 
-    + adz_up(k-1) / adz(k) * rdf_zs_ml(k)
-    enddo
-    rdf_zm(nlev + 1) = 0.0_8 !domain top tendency
-  
-    do_limit = .true.
-    if (do_limit) then 
-  
-    ! Detection and correction of grid-scale violation for df_zm 
-    !  Zerroukat et al. (2005 QJRMS)
-    spurious(:) = .false.
-    do k = 1, nlev
-    km3 = MAX( k-3, 1 )
-    km2 = MAX( k-2, 1 )
-    km1 = MAX( k-1, 1 )
-    k00 = MIN( k, nlev )
-    kp1 = MIN( k+1, nlev )
-    kp2 = MIN( k+2, nlev )
-    cnd1 = ( rdf_zm(k) - rdf_z(km1) ) * ( rdf_z(k00) - rdf_zm(k) ) < 0.0
-    cnd2 = ( rdf_z(km1) - rdf_z(km2) ) * ( rdf_z(kp1) - rdf_z(k00) ) >= 0.0
-    cnd3 = ( rdf_z(km1) - rdf_z(km2) ) * ( rdf_z(km2) - rdf_z(km3) ) <= 0.0
-    cnd4 = ( rdf_z(kp1) - rdf_z(k00) ) * ( rdf_z(kp2) - rdf_z(kp1) ) <= 0.0
-    cnd5 = ( rdf_zm(k) - rdf_z(km1) ) * ( rdf_z(km1) - rdf_z(km2) ) <= 0.0
-    if ( cnd1 .and. ( cnd2 .or. cnd3 .or. cnd4 .or. cnd5 ) ) then
-    spurious(k) = .false.
-    alpha = ABS( rdf_zm(k) - rdf_z(k00) ) - ABS( rdf_zm(k) - rdf_z(km1) )
-    alpha = SIGN( 0.5_8, alpha ) + 0.5_8 ! Heaviside step function, alpha = 0 or 1
-    rdf_zm(k) = alpha * rdf_z(km1) + ( 1.0_8 - alpha ) * rdf_z(k00)
-    endif
-    enddo
-  
-    ! Store rdf_zm into rdf_zm_up and rdf_zm_dn
-    rdf_zm_up(:) = rdf_zm(2:nlev + 1)
-    rdf_zm_dn(:) = rdf_zm(1:nlev)  
-  
-    ! Detection and correction of grid-scale violation for rdf_zs_ml for monotonic layer
-    ! - Recompute rdf_zs_zl with updated rdf_zm
-    ! - For monotonic layer, check if it is bounded between rdf_zm(k) and rdf_zm(k+1)
-    !   If not bounded, assign rdf_zs_ml to closest rdf_zm, and compute other interface value
-    !   and store it into either rdf_zm_up or rdf_zm_dn. That level will have two interface
-    !   values for upper and lower layer.    
-    spurious(:) = .FALSE.
-    do k = 1, nlev
-    km1 = MAX( k-1, 1 )
-    kp1 = MIN( k+1, nlev )
-    rdf_zs_ml(k) = ic1(k) * ( c0(k)*rdf_z(k) - c2(k)*rdf_zm(k) - c3(k)*rdf_zm(k+1) ) !+PAB change
-    cnd1 = ( rdf_z(k) - rdf_z(km1) ) * ( rdf_z(kp1) - rdf_z(k) ) >= 0.0_8
-    cnd2 = ( rdf_zs_ml(k) - rdf_zm(k) ) * ( rdf_zm(k+1) - rdf_zs_ml(k) ) < 0.0_8 !+PAB change
-    if ( cnd1 .AND. cnd2 ) then
-    ! Inflection within a monotonic layer
-    spurious(k) = .TRUE.
-    alpha = ABS( rdf_zs_ml(k) - rdf_zm(k) ) - ABS( rdf_zs_ml(k) - rdf_zm(k+1) ) !+PAB change
-    alpha = SIGN( 0.5_8, alpha ) + 0.5_8 ! alpha = 0 or 1
-    rdf_zs_ml(k) = alpha * rdf_zm(k+1) + ( 1.0_8 - alpha ) * rdf_zm(k) !+PAB change
-    if ( alpha < 0.5_8 ) then
-    rdf_zm_up(k) = ic3(k) * ( c0(k)*rdf_z(k) - c1(k)*rdf_zs_ml(k) - c2(k)*rdf_zm(k) )
-    else
-    rdf_zm_dn(k) = ic2(k) * (c0(k)*rdf_z(k) - c1(k)*rdf_zs_ml(k) - c3(k)*rdf_zm(k+1)) !+PAB change
-    endif
-    endif
-    enddo
-  
-    ! Remove discountinuity at interface level as many as possible
-    ! - For monotonic layer, set rdf_z_dn(k) = rdf_z_up(k-1) and rdf_z_up(k) = rdf_z_dn(k+1),
-    !   then re-compute rdf_zs_ml.
-    ! - Check if new rdf_zs_ml is bounded between rdf_zm_dn and rdf_zm_up, and if not, set
-    !   rdf_zs_ml to the closer interface value and compute the other interfaec value.              
-    do k = 1, nlev
-    km1 = MAX( k-1, 1 )
-    kp1 = MIN( k+1, nlev )
-    cnd1 = ( rdf_zs_ml(k) - rdf_zm_dn(k) ) * ( rdf_zm_up(k) - rdf_zs_ml(k) ) >= 0.0_8
-    if ( cnd1 ) then
-    ! Monotonic layer
-  
-    ! Re-set df_zm_dn and df_zm_up
-    rdf_zm_dn(k) = rdf_zm_up(km1)
-    rdf_zm_up(k) = rdf_zm_dn(kp1)
-    ! Re-compute df_zs
-    rdf_zs_ml(k) = ic1(k) * ( c0(k)*rdf_z(k) - c2(k)*rdf_zm_dn(k) - c3(k)*rdf_zm_up(k) )
-    !
-    cnd2 = ( rdf_zs_ml(k) - rdf_zm_dn(k) ) * ( rdf_zm_up(k) - rdf_zs_ml(k) ) < 0.0_8
-  
-    if ( cnd2 ) then
-    ! Non-monotonic profile
-    spurious(k) = .TRUE.
-    alpha = ABS( rdf_zs_ml(k) - rdf_zm_dn(k) ) - ABS( rdf_zs_ml(k) - rdf_zm_up(k) )
-    alpha = SIGN( 0.5_8, alpha ) + 0.5_8
-    rdf_zs_ml(k) = alpha * rdf_zm_up(k) + ( 1.0_8 - alpha ) * rdf_zm_dn(k)
-    if ( alpha < 0.5_8 ) then
-    rdf_zm_up(k) = ic3(k) * (c0(k)*rdf_z(k)-c1(k)*rdf_zs_ml(k)-c2(k)*rdf_zm_dn(k))
-    else
-    rdf_zm_dn(k) = ic2(k) * (c0(k)*rdf_z(k)-c1(k)*rdf_zs_ml(k)-c3(k)*rdf_zm_up(k))
-    endif
-    endif
-  
-    endif
-    enddo
-  
-    else
-  
-    rdf_zm_up(:) = rdf_zm(2:nlev + 1)
-    rdf_zm_dn(:) = rdf_zm(1:nlev)
-  
-    endif
-  
-    ! Construct the tendency profile
-    i4 = 0
-    ! Below zi1
-    do k=1,zi1-1
-    i4=i4+1
-    df_zs(i4) = df_z(k)
-    enddo
-  
-    ! between zi1 and zi2
-    do k = zi1, zi2
-    i1 = i4 + 1
-    if (mod(five_add_nlevels,2) .ne. 0 ) then
-    i2 = i1 + (five_add_nlevels+1) / 2 - 1 
-    else
-    i2 = i1 + five_add_nlevels / 2 - 1 
-    end if
-    i3 = i2 + 1
-    i4 = i1 + five_add_nlevels 
-    ! Compute df_zs for all zs levels
-    ! zi(k) <= zs(i1:i2) < z(k)
-    df_zs(i1:i2) = ( 1.0_8 - weight(i1:i2) ) * rdf_zm_dn(k) + weight(i1:i2) * rdf_zs_ml(k)
-    ! z(k) <= zs(i3:i4) < zi(k+1)
-    df_zs(i3:i4) = ( 1.0_8 - weight(i3:i4) ) * rdf_zm_up(k) + weight(i3:i4) * rdf_zs_ml(k)
-    ! Non-mass weighted
-    df_zs(i1:i4) = df_zs(i1:i4) / rho_zs(i1:i4)
-    enddo
-  
-    ! Above zi2
-    do k = zi2+1,nlev
-    i4 = i4 + 1
-    df_zs(i4) = df_z(k)
-    enddo    
-  
-    ! Finally, "unflip" the tendency
-    do k = 1,nlev_five
-    ten_high(k) = df_zs(nlev_five-k+1)
-    enddo
-  end subroutine tendency_low_to_high 
+  zi1 = nlev-five_bot_k + 1
+  zi2 = nlev-five_top_k + 1
+
+  dz=zi(2)
+
+  ! define adz and adzw
+  do k=2,nlev
+  adzw(k) = (zm(k)-zm(k-1))/dz
+  enddo
+  adzw(1) = 1._8
+
+  adz(1) = 1._8
+  do k=2,nlev-1
+  adz(k) = 0.5*(zm(k+1)-zm(k-1))/dz
+  enddo
+  adz(nlev) = adzw(nlev)
+
+  ! Prepare coefficients
+
+  ! If the location of the mid-layer point is optionally specified then following variables
+  ! are required to be computed every time this function is called.
+
+  ! Distance from the mid-layer level to the host model lower/upper interface value divided
+  ! by dz. Here the mid-layer level is z(k).
+
+  do k=1,nlev
+  adz_dn(k) = (zm(k) - zi(k))/dz
+  enddo
+
+  do k=1,nlev
+  adz_up(k) = (zi(k+1) - zm(k))/dz
+  enddo
+
+  ! For solving system of equations
+  ! The j-th column of the matrix A is stored in the j-th column of the array a as follows:
+  !    a(ml+mu+1+i-j,j) = A(i,j) for max(1,j-mu)<=i<=min(nzm,j+ml)
+  ! Set up superdiagonal, diagonal, subdiagonal component of the matrix
+  a(:,:) = 0._8
+  ! Superdiagonal 
+  do k=2,nlev
+  a(2,k)=adz_up(k-1)**2/(adz(k)*adzw(k-1))*0.5_8
+  enddo
+  ! Diagonal
+  k = 1
+  a(3,1) = (adz_dn(1) + adzw(1) + adz_up(1) * adz_dn(2) / adz(2))/adzw(1) * 0.5_8
+  do k=2,nlev
+  kp1=min(k+1,nlev)
+  a(3,k) = (adz_up(k-1) * adz_dn(k) / adz(k) + adzw(k) & 
+    + adz_up(k) * adz_dn(kp1) / adz(kp1) ) / adzw(k) * 0.5
+  !+ adz_dn(kp1) used to be adz_dn(k)
+  enddo
+  ! Subdiagonal
+  do k=1, nlev
+  a(4,k) = adz_dn(k)**2 / (adz(k) * adzw(k))*0.5
+  enddo
+
+  ! Factor the matrix with LAPACK, BLAS
+  call dgbtrf( nlev, nlev, ml, mu, a, lda, ipiv, info )    
+
+  ! For interpolation
+  i4=0
+  do k=1,zi1-1
+  i4 = i4 + 1
+  enddo
+
+  c0(:) = 0._8
+  c1(:) = 0._8
+  c2(:) = 0._8
+  c3(:) = 0._8
+  ic1(:) = 0._8
+  ic2(:) = 0._8
+  ic3(:) = 0._8
+
+  weight(:) = 0._8
+
+  i4zi1 = i4
+  do k = zi1, zi2
+  i1 = i4 + 1
+  if (mod(five_add_nlevels,2) .ne. 0 ) then
+  i2 = i1 + (five_add_nlevels+1) / 2 - 1 
+  else
+  i2 = i1 + five_add_nlevels / 2 - 1 
+  end if
+  i3 = i2 + 1
+  i4 = i1 + five_add_nlevels 
+  ! weight for linear interpolation
+  weight(i1:i2) = ( zm_five(i1:i2) - zi(k) ) / ( zm(k) - zi(k) )
+  weight(i3:i4) = ( zm_five(i3:i4) - zi(k+1) ) / ( zm(k) - zi(k+1) ) 
+  ! c1, c2, c3
+  c0(k) = 2.0_8 * (zi(k+1) - zi(k))
+  c1(k) = zi(k+1) - zi(k)
+  c2(k) = zm(k) - zi(k)
+  c3(k) = zi(k+1) - zm(k)
+
+  ic1(k) = 1.0_8 / c1(k)
+  ic2(k) = 1.0_8 / c2(k) 
+  ic3(k) = 1.0_8 / c3(k)            
+
+  enddo
+
+  ! add flag computed?
+
+  ! Mass weight inout value
+  rdf_z(:) = rho_low(:) * df_z(:)
+
+  ! Solve system of equations to get mid-layer target value
+  ! Solve the linear system with LAPACK, BLAS
+  ! input b wil be solution when output
+  b(:) = rdf_z(:)
+  call dgbtrs('n', nlev, ml, mu, 1, a, lda, ipiv, b, nlev, info)
+  rdf_zs_ml(:) = b(:)
+
+  ! Interface target value
+  rdf_zm(1) = rdf_zs_ml(1)
+  do k = 2, nlev
+  rdf_zm(k) = adz_dn(k) / adz(k) * rdf_zs_ml(k-1) & 
+  + adz_up(k-1) / adz(k) * rdf_zs_ml(k)
+  enddo
+  rdf_zm(nlev + 1) = 0.0_8 !domain top tendency
+
+  do_limit = .true.
+  if (do_limit) then 
+
+  ! Detection and correction of grid-scale violation for df_zm 
+  !  Zerroukat et al. (2005 QJRMS)
+  spurious(:) = .false.
+  do k = 1, nlev
+  km3 = MAX( k-3, 1 )
+  km2 = MAX( k-2, 1 )
+  km1 = MAX( k-1, 1 )
+  k00 = MIN( k, nlev )
+  kp1 = MIN( k+1, nlev )
+  kp2 = MIN( k+2, nlev )
+  cnd1 = ( rdf_zm(k) - rdf_z(km1) ) * ( rdf_z(k00) - rdf_zm(k) ) < 0.0
+  cnd2 = ( rdf_z(km1) - rdf_z(km2) ) * ( rdf_z(kp1) - rdf_z(k00) ) >= 0.0
+  cnd3 = ( rdf_z(km1) - rdf_z(km2) ) * ( rdf_z(km2) - rdf_z(km3) ) <= 0.0
+  cnd4 = ( rdf_z(kp1) - rdf_z(k00) ) * ( rdf_z(kp2) - rdf_z(kp1) ) <= 0.0
+  cnd5 = ( rdf_zm(k) - rdf_z(km1) ) * ( rdf_z(km1) - rdf_z(km2) ) <= 0.0
+  if ( cnd1 .and. ( cnd2 .or. cnd3 .or. cnd4 .or. cnd5 ) ) then
+  spurious(k) = .false.
+  alpha = ABS( rdf_zm(k) - rdf_z(k00) ) - ABS( rdf_zm(k) - rdf_z(km1) )
+  alpha = SIGN( 0.5_8, alpha ) + 0.5_8 ! Heaviside step function, alpha = 0 or 1
+  rdf_zm(k) = alpha * rdf_z(km1) + ( 1.0_8 - alpha ) * rdf_z(k00)
+  endif
+  enddo
+
+  ! Store rdf_zm into rdf_zm_up and rdf_zm_dn
+  rdf_zm_up(:) = rdf_zm(2:nlev + 1)
+  rdf_zm_dn(:) = rdf_zm(1:nlev)  
+
+  ! Detection and correction of grid-scale violation for rdf_zs_ml for monotonic layer
+  ! - Recompute rdf_zs_zl with updated rdf_zm
+  ! - For monotonic layer, check if it is bounded between rdf_zm(k) and rdf_zm(k+1)
+  !   If not bounded, assign rdf_zs_ml to closest rdf_zm, and compute other interface value
+  !   and store it into either rdf_zm_up or rdf_zm_dn. That level will have two interface
+  !   values for upper and lower layer.    
+  spurious(:) = .FALSE.
+  do k = 1, nlev
+  km1 = MAX( k-1, 1 )
+  kp1 = MIN( k+1, nlev )
+  rdf_zs_ml(k) = ic1(k) * ( c0(k)*rdf_z(k) - c2(k)*rdf_zm(k) - c3(k)*rdf_zm(k+1) ) !+PAB change
+  cnd1 = ( rdf_z(k) - rdf_z(km1) ) * ( rdf_z(kp1) - rdf_z(k) ) >= 0.0_8
+  cnd2 = ( rdf_zs_ml(k) - rdf_zm(k) ) * ( rdf_zm(k+1) - rdf_zs_ml(k) ) < 0.0_8 !+PAB change
+  if ( cnd1 .AND. cnd2 ) then
+  ! Inflection within a monotonic layer
+  spurious(k) = .TRUE.
+  alpha = ABS( rdf_zs_ml(k) - rdf_zm(k) ) - ABS( rdf_zs_ml(k) - rdf_zm(k+1) ) !+PAB change
+  alpha = SIGN( 0.5_8, alpha ) + 0.5_8 ! alpha = 0 or 1
+  rdf_zs_ml(k) = alpha * rdf_zm(k+1) + ( 1.0_8 - alpha ) * rdf_zm(k) !+PAB change
+  if ( alpha < 0.5_8 ) then
+  rdf_zm_up(k) = ic3(k) * ( c0(k)*rdf_z(k) - c1(k)*rdf_zs_ml(k) - c2(k)*rdf_zm(k) )
+  else
+  rdf_zm_dn(k) = ic2(k) * (c0(k)*rdf_z(k) - c1(k)*rdf_zs_ml(k) - c3(k)*rdf_zm(k+1)) !+PAB change
+  endif
+  endif
+  enddo
+
+  ! Remove discountinuity at interface level as many as possible
+  ! - For monotonic layer, set rdf_z_dn(k) = rdf_z_up(k-1) and rdf_z_up(k) = rdf_z_dn(k+1),
+  !   then re-compute rdf_zs_ml.
+  ! - Check if new rdf_zs_ml is bounded between rdf_zm_dn and rdf_zm_up, and if not, set
+  !   rdf_zs_ml to the closer interface value and compute the other interfaec value.              
+  do k = 1, nlev
+  km1 = MAX( k-1, 1 )
+  kp1 = MIN( k+1, nlev )
+  cnd1 = ( rdf_zs_ml(k) - rdf_zm_dn(k) ) * ( rdf_zm_up(k) - rdf_zs_ml(k) ) >= 0.0_8
+  if ( cnd1 ) then
+  ! Monotonic layer
+
+  ! Re-set df_zm_dn and df_zm_up
+  rdf_zm_dn(k) = rdf_zm_up(km1)
+  rdf_zm_up(k) = rdf_zm_dn(kp1)
+  ! Re-compute df_zs
+  rdf_zs_ml(k) = ic1(k) * ( c0(k)*rdf_z(k) - c2(k)*rdf_zm_dn(k) - c3(k)*rdf_zm_up(k) )
+  !
+  cnd2 = ( rdf_zs_ml(k) - rdf_zm_dn(k) ) * ( rdf_zm_up(k) - rdf_zs_ml(k) ) < 0.0_8
+
+  if ( cnd2 ) then
+  ! Non-monotonic profile
+  spurious(k) = .TRUE.
+  alpha = ABS( rdf_zs_ml(k) - rdf_zm_dn(k) ) - ABS( rdf_zs_ml(k) - rdf_zm_up(k) )
+  alpha = SIGN( 0.5_8, alpha ) + 0.5_8
+  rdf_zs_ml(k) = alpha * rdf_zm_up(k) + ( 1.0_8 - alpha ) * rdf_zm_dn(k)
+  if ( alpha < 0.5_8 ) then
+  rdf_zm_up(k) = ic3(k) * (c0(k)*rdf_z(k)-c1(k)*rdf_zs_ml(k)-c2(k)*rdf_zm_dn(k))
+  else
+  rdf_zm_dn(k) = ic2(k) * (c0(k)*rdf_z(k)-c1(k)*rdf_zs_ml(k)-c3(k)*rdf_zm_up(k))
+  endif
+  endif
+
+  endif
+  enddo
+
+  else
+
+  rdf_zm_up(:) = rdf_zm(2:nlev + 1)
+  rdf_zm_dn(:) = rdf_zm(1:nlev)
+
+  endif
+
+  ! Construct the tendency profile
+  i4 = 0
+  ! Below zi1
+  do k=1,zi1-1
+  i4=i4+1
+  df_zs(i4) = df_z(k)
+  enddo
+
+  ! between zi1 and zi2
+  do k = zi1, zi2
+  i1 = i4 + 1
+  if (mod(five_add_nlevels,2) .ne. 0 ) then
+  i2 = i1 + (five_add_nlevels+1) / 2 - 1 
+  else
+  i2 = i1 + five_add_nlevels / 2 - 1 
+  end if
+  i3 = i2 + 1
+  i4 = i1 + five_add_nlevels 
+  ! Compute df_zs for all zs levels
+  ! zi(k) <= zs(i1:i2) < z(k)
+  df_zs(i1:i2) = ( 1.0_8 - weight(i1:i2) ) * rdf_zm_dn(k) + weight(i1:i2) * rdf_zs_ml(k)
+  ! z(k) <= zs(i3:i4) < zi(k+1)
+  df_zs(i3:i4) = ( 1.0_8 - weight(i3:i4) ) * rdf_zm_up(k) + weight(i3:i4) * rdf_zs_ml(k)
+  ! Non-mass weighted
+  df_zs(i1:i4) = df_zs(i1:i4) / rho_zs(i1:i4)
+  enddo
+
+  ! Above zi2
+  do k = zi2+1,nlev
+  i4 = i4 + 1
+  df_zs(i4) = df_z(k)
+  enddo    
+
+  ! Finally, "unflip" the tendency
+  do k = 1,nlev_five
+  ten_high(k) = df_zs(nlev_five-k+1)
+  enddo
+end subroutine tendency_low_to_high 
 
 !#######################################################################
 
