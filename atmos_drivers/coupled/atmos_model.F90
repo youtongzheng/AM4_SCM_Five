@@ -505,6 +505,7 @@ subroutine update_atmos_model_down( Surface_boundary, Atmos )
         call five_tend_low_to_high(Physics%block(blk), Physics_tendency%block(blk), Rad_flux(1)%block(blk), &
                                   Physics_five%block(blk), Physics_tendency_five%block(blk), Rad_flux_five(1)%block(blk))
         Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dir = Rad_flux(1)%block(blk)%flux_sw_down_vis_dir !yzheng! need to check
+        Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dif = Rad_flux(1)%block(blk)%flux_sw_down_vis_dif 
       enddo
     endif
 

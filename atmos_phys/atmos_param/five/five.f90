@@ -76,7 +76,7 @@ public u_dt_five, v_dt_five, t_dt_five, q_dt_five
 !------------------------------------------------------------------------
 !---namelist-------------------------------------------------------------
 !------------------------------------------------------------------------
-logical :: do_five = .TRUE.
+logical :: do_five = .FALSE.
 public do_five
 
 ! This is the number of layers to add between native levels
