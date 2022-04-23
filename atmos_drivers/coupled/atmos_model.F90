@@ -960,10 +960,11 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
     call alloc_physics_type (Physics, Atm_block, p_hydro, hydro, do_uni_zfull) !miz
     call atmosphere_pref (Physics%glbl_qty%pref)
 ! yzheng: -------------------initialize FIVE----------------------------
+
+    call five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
+                  Atm_block, Atmos%lon_bnd(:,:), Atmos%lat_bnd(:,:), & 
+                  p_hydro, hydro, do_uni_zfull)
     if (do_five) then
-      call five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
-                    Atm_block, Atmos%lon_bnd(:,:), Atmos%lat_bnd(:,:), & 
-                    p_hydro, hydro, do_uni_zfull)
       call atmosphere_pref_five (Physics_five%glbl_qty%pref)
     endif
 !---------- initialize physics -------
@@ -1223,7 +1224,9 @@ subroutine update_atmos_model_state (Atmos)
     endif
 
     call atmosphere_state_update (Atmos%Time, Physics_tendency, Physics, Atm_block)
-    call atmosphere_state_update_five (Atmos%Time, Physics_tendency_five, Physics_five, Atm_block) !yzheng
+    if (do_five) then
+      call atmosphere_state_update_five (Atmos%Time, Physics_tendency_five, Physics_five, Atm_block) !yzheng
+    endif
 !------ advance time ------
     Atmos % Time = Atmos % Time + Atmos % Time_step
 

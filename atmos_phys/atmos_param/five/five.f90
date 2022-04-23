@@ -182,6 +182,8 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
     endif
     call close_file (unit)
 
+    if (.not. do_five) return
+
     !compute nlev_five and ph
     !should replace ps0 with the ps(1,1)
     call five_pressure_init(pe(1,:,1), ak/(0.01*ps(1,1)),bk/0.01, ps(1,1), nlev_five)
