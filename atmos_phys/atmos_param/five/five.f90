@@ -76,8 +76,8 @@ public u_dt_five, v_dt_five, t_dt_five, q_dt_five
 !------------------------------------------------------------------------
 !---namelist-------------------------------------------------------------
 !------------------------------------------------------------------------
-logical :: do_five = .FALSE.
-public do_five
+! logical :: do_five = .FALSE.
+! public do_five
 
 ! This is the number of layers to add between native levels
 !  NOTE: This must be an EVEN number, due to limitations
@@ -94,7 +94,7 @@ real, private :: five_bot_toadd = 100000.
 ! The top layer to which we will add layers to
 real, private :: five_top_toadd = 50000.
 
-NAMELIST / five_nml / do_five, five_add_nlevels, five_bot_toadd, five_top_toadd
+NAMELIST / five_nml / five_add_nlevels, five_bot_toadd, five_top_toadd
 
 !------------------------------------------------------------------------
 !---Internal variables used for calculation------------------------------
@@ -181,8 +181,6 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
          write (unit, nml=five_nml)
     endif
     call close_file (unit)
-
-    if (.not. do_five) return
 
     !compute nlev_five and ph
     !should replace ps0 with the ps(1,1)

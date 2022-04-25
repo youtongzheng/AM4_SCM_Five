@@ -118,7 +118,7 @@ use five_mod, only: five_init, &
                     five_tend_high_to_low, &
                     atmosphere_pref_five
 use atmosphere_mod,  only:   atmosphere_state_update_five
-use five_mod, only: nlev_five, do_five                
+use five_mod, only: nlev_five                
 
 !-----------------------------------------------------------------------
 
@@ -260,7 +260,7 @@ logical :: do_netcdf_restart = .true.
 logical :: restart_tbot_qbot = .false.
 integer :: nxblocks = 1
 integer :: nyblocks = 1
-namelist /atmos_model_nml/ do_netcdf_restart, restart_tbot_qbot, nxblocks, nyblocks
+namelist /atmos_model_nml/ do_netcdf_restart, restart_tbot_qbot, nxblocks, nyblocks, do_five !yzheng
 
 !--- concurrent and decoupled radiation and physics variables
 type (clouds_from_moist_type), dimension(:), allocatable :: Moist_clouds
