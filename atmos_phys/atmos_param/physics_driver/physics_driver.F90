@@ -158,7 +158,6 @@ use monin_obukhov_mod,        only: monin_obukhov_init
 !yzheng: modules and variables related to FIVE
 use five_mod, only: five_var_high_to_low_4d
 use five_mod, only: nlev_five
-use atmos_model_mod, only: do_five
 
 #ifdef SCM
 ! Option to add SCM radiative tendencies from forcing to lw_tendency
@@ -609,6 +608,7 @@ type(precip_flux_type)              :: Precip_flux
 subroutine physics_driver_init (Time, lonb, latb, lon, lat, axes, &
                                 Surf_diff, Exch_ctrl, Atm_block,   &
                                 Moist_clouds, Physics, Physics_tendency, &
+                                do_five, & !yzheng: add the do_five 
                                 diffm, difft, &
                                 Physics_five) !yzheng: add the five option
 
@@ -627,6 +627,7 @@ type(clouds_from_moist_type), intent(inout) :: Moist_clouds(:)
 type(physics_type),           intent(inout) :: Physics
 type(physics_tendency_type),  intent(inout) :: Physics_tendency
 real,    dimension(:,:,:),    intent(out),  optional :: diffm, difft
+logical,                      intent(in)  :: do_five !yzheng
 type(physics_type),           intent(inout),  optional :: Physics_five !yzheng
 
 !---------------------------------------------------------------------

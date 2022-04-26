@@ -481,7 +481,7 @@ contains
 
 !#######################################################################
 
- subroutine atmosphere_dynamics (Time, Surf_diff)
+ subroutine atmosphere_dynamics (Time, Surf_diff, do_five)!yzheng
 !
 !        Time = time at the current time level
 !
@@ -489,7 +489,7 @@ contains
 
    type(time_type),intent(in)    :: Time
    type(surf_diff_type), intent(in) :: Surf_diff
-
+   logical,                      intent(in)  :: do_five !yzheng
 !---- dynamics -----
 
 
@@ -506,7 +506,7 @@ contains
 !     call fv_compute_p_z (nlev, phis, pe, peln, delp, delz, &
 !                          pt, q(:,:,:,sphum), &
 !                          p_full, p_half, z_full, z_half, .true.)
-   call scm_core_driver (Time, Time_step_atmos, pdamp, phis, Forc_tend)
+   call scm_core_driver (Time, Time_step_atmos, pdamp, phis, Forc_tend, do_five) !yzheng
 
  end subroutine atmosphere_dynamics
 

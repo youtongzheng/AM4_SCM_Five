@@ -261,7 +261,6 @@ logical :: restart_tbot_qbot = .false.
 integer :: nxblocks = 1
 integer :: nyblocks = 1
 namelist /atmos_model_nml/ do_netcdf_restart, restart_tbot_qbot, nxblocks, nyblocks, do_five !yzheng
-public do_five !yzheng
 
 !--- concurrent and decoupled radiation and physics variables
 type (clouds_from_moist_type), dimension(:), allocatable :: Moist_clouds
@@ -983,7 +982,7 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
                               Exch_ctrl,          &
                               Atm_block,          &
                               Moist_clouds,       &
-                              Physics, Physics_tendency)
+                              Physics, Physics_tendency, do_five)
     else
       call atmos_physics_driver_inputs_five (Physics_five, Atm_block) !yzheng
       call physics_driver_init(Atmos%Time,         &
@@ -996,7 +995,7 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
                               Exch_ctrl,          &
                               Atm_block,          &
                               Moist_clouds,       &
-                              Physics, Physics_tendency, Physics_five = Physics_five) !yzheng
+                              Physics, Physics_tendency, do_five, Physics_five = Physics_five) !yzheng
      end if
 !--- need to return tracer values back to dy-core
 !--- because tracer initilization inside of physics
@@ -1200,7 +1199,7 @@ subroutine update_atmos_model_dynamics (Atmos)
 
     call set_atmosphere_pelist()
 
-    call atmosphere_dynamics (Atmos%Time,Atmos%surf_diff)
+    call atmosphere_dynamics (Atmos%Time,Atmos%surf_diff, do_five)!yzheng: add the do_five
 
     call mpp_set_current_pelist(Atmos%pelist, no_sync=.TRUE.)
 end subroutine update_atmos_model_dynamics
