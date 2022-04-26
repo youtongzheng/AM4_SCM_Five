@@ -120,7 +120,7 @@ module scm_forc_mod
                                  get_mc3e_sst, mc3e_surface_flux_loop, get_mc3e_sfc
    !yzheng: modules and variables related to FIVE
    use      five_mod, only: update_bomex_forc_five
-   use      five_mod, only: do_five
+   use      atmos_model_mod, only: do_five
 implicit none
 
 public scm_data_read, scm_forc_init, scm_forc_end, update_scm_forc,  &

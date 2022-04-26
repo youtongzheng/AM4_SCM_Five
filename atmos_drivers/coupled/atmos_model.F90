@@ -261,6 +261,7 @@ logical :: restart_tbot_qbot = .false.
 integer :: nxblocks = 1
 integer :: nyblocks = 1
 namelist /atmos_model_nml/ do_netcdf_restart, restart_tbot_qbot, nxblocks, nyblocks, do_five !yzheng
+public do_five !yzheng
 
 !--- concurrent and decoupled radiation and physics variables
 type (clouds_from_moist_type), dimension(:), allocatable :: Moist_clouds
@@ -961,10 +962,11 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
     call atmosphere_pref (Physics%glbl_qty%pref)
 ! yzheng: -------------------initialize FIVE----------------------------
 
-    call five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
-                  Atm_block, Atmos%lon_bnd(:,:), Atmos%lat_bnd(:,:), & 
-                  p_hydro, hydro, do_uni_zfull)
     if (do_five) then
+      call five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
+      Atm_block, Atmos%lon_bnd(:,:), Atmos%lat_bnd(:,:), & 
+      p_hydro, hydro, do_uni_zfull)
+
       call atmosphere_pref_five (Physics_five%glbl_qty%pref)
     endif
 !---------- initialize physics -------

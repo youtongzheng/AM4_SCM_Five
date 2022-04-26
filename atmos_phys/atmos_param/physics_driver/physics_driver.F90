@@ -157,7 +157,8 @@ use monin_obukhov_mod,        only: monin_obukhov_init
 
 !yzheng: modules and variables related to FIVE
 use five_mod, only: five_var_high_to_low_4d
-use five_mod, only: nlev_five, do_five
+use five_mod, only: nlev_five
+use atmos_model_mod, only: do_five
 
 #ifdef SCM
 ! Option to add SCM radiative tendencies from forcing to lw_tendency
