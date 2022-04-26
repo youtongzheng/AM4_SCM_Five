@@ -66,7 +66,6 @@ integer :: unit, clat,clon,kdim, k, kd
    real,                  intent(in)    :: pdamp
    real, dimension(:,:),  intent(in)    :: elev
    type (prog_var_type),  intent(inout) :: Forc_tend
-   real,  intent (in),    dimension(:,:)    :: elev
    logical,                      intent(in)  :: do_five !yzheng
 
    type (time_type) :: Time_diag  
