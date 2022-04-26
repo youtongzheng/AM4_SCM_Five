@@ -260,6 +260,7 @@ logical :: do_netcdf_restart = .true.
 logical :: restart_tbot_qbot = .false.
 integer :: nxblocks = 1
 integer :: nyblocks = 1
+logical :: do_five = .false.
 namelist /atmos_model_nml/ do_netcdf_restart, restart_tbot_qbot, nxblocks, nyblocks, do_five !yzheng
 
 !--- concurrent and decoupled radiation and physics variables
