@@ -1977,6 +1977,7 @@ contains
     if (Atm%pe) then
       call mpp_set_current_pelist(Atm%pelist)
       call atmos_model_end ( Atm )
+      write (*,*) 'after atmos_model_end' !yzheng: debug
     endif
     if (Land%pe) then
       call mpp_set_current_pelist(Land%pelist)
@@ -1993,11 +1994,13 @@ contains
 
     !----- write restart file ------
     call coupler_restart(Time, Time_restart_current)
-
+    write (*,*) 'after coupler_restart' !yzheng: debug
     call diag_manager_end (Time)
+    write (*,*) 'after diag_manager_end' !yzheng: debug
     call fms_io_exit
+    write (*,*) 'after fms_io_exit' !yzheng: debug
     call mpp_set_current_pelist()
-
+    write (*,*) 'after mpp_set_current_pelist' !yzheng: debug
 !-----------------------------------------------------------------------
 
   end subroutine coupler_end
