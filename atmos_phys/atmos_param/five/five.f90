@@ -292,7 +292,7 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
     enddo
 
     !initialize Rad_flux_five
-    call alloc_radiation_flux_type (Rad_flux, nonzero_rad_flux_init, Atm_block)
+    ! call alloc_radiation_flux_type (Rad_flux, nonzero_rad_flux_init, Atm_block)
 
     do n = 1, size(Rad_flux_five,1)
         allocate (Rad_flux_five(n)%block(Atm_block%nblks))
