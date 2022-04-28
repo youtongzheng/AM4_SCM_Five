@@ -35,7 +35,8 @@ use             fms_mod, only: open_namelist_file
 ! FV core modules:
 !-----------------
 use            fv_pack, only: ak, bk, nlon, mlat, nlev, ncnst, get_eta_level
- 
+! use            scm_rf01_mod, only: divf
+
 !-----------------------------------------------------------------
 implicit none
 private
@@ -935,6 +936,7 @@ subroutine update_bomex_forc_five()
          pe_five, peln_five,  pk_five,  pkz_five,  2./7.)
   
     ! --- compute large-scale subsidence
+         !yzheng: the z_full_five and p_full_five should also be updated (will revise future)
     do k=1,nlev_five
        if ( z_full_five(1,1,k) < 1500.0 ) then
           omga_five(:,:,k) = p_full_five(1,1,k)/(rdgas*pt_five(1,1,k))*grav  &
@@ -947,6 +949,43 @@ subroutine update_bomex_forc_five()
        end if
     end do
 end subroutine update_bomex_forc_five
+
+! !#######################################################################
+! ! Subroutine to apply RF01 forcings
+! subroutine update_rf01_forc_five()
+!   #include "fv_arrays.h"
+!   #include "fv_point.inc"
+    
+!     write (*,*) 'ps', ps
+    
+!     ! --- update pe_five, peln_five, and delp_five
+!     ps_five = ps
+!     do k=1,size(pt_five,3)
+!       do j=1,size(ps_five,2)
+!         do i=1,size(ps_five,1)
+!           delp_five(i,j,k) = ak_five(k+1)-ak_five(k) + ps_five(i,j)*(bk_five(k+1)-bk_five(k))
+!         enddo
+!       enddo
+!     enddo
+    
+!     call p_var(nlon, mlat, nlev_five, 1, mlat, ak_five(1), delp_five, ps_five,     &
+!            pe_five, peln_five,  pk_five,  pkz_five,  2./7.)
+    
+!       ! --- compute large-scale subsidence
+!     ! ZNT 05/18/2020: use linear profile for subsidence rather than a sharp cutoff
+!     !                 following CLUBB-SCM.
+!       do k=1,nlev_five
+!           if ( z_full_five(1,1,k) < 1600.0 ) then
+!             omga_five(:,:,k) = p_full_five(1,1,k)/(rdgas*pt_five(1,1,k))*grav  &
+!                           * divf*z_full_five(1,1,k)
+!           elseif ( z_full_five(1,1,k) < 2400.0 ) then
+!             omga_five(:,:,k) = p_full_five(1,1,k)/(rdgas*pt_five(1,1,k))*grav  &
+!                           * (divf*1600. - divf*2.*(z_full_five(1,1,k)-1600.) )
+!           else
+!             omga_five(:,:,k) = 0.
+!           end if
+!       end do
+!   end subroutine update_rf01_forc_five
 
 subroutine tendency_low_to_high(zm_in, zi_in, &
   zm_five_in, &
