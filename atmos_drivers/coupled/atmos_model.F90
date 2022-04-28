@@ -509,12 +509,12 @@ subroutine update_atmos_model_down( Surface_boundary, Atmos )
         Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dif = Rad_flux(1)%block(blk)%flux_sw_down_vis_dif 
       enddo
       !yzheng: output to check (should be deleted eventually)
-      write (*,*) 'Rad_flux_five(1)%block(blk)%tdt_lw', Rad_flux_five(1)%block(blk)%tdt_lw
-      write (*,*) 'Rad_flux_five(1)%block(blk)%tdt_rad', Rad_flux_five(1)%block(blk)%tdt_rad
-      write (*,*) 'Rad_flux_five(1)%block(blk)%extinction', Rad_flux_five(1)%block(blk)%extinction
+      write (*,*) 'Rad_flux_five(1)%block(blk)%tdt_lw', Rad_flux_five(1)%block(1)%tdt_lw
+      write (*,*) 'Rad_flux_five(1)%block(blk)%tdt_rad', Rad_flux_five(1)%block(1)%tdt_rad
+      write (*,*) 'Rad_flux_five(1)%block(blk)%extinction', Rad_flux_five(1)%block(1)%extinction
 
-      write (*,*) 'Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dir', Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dir
-      write (*,*) 'Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dif', Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dif
+      write (*,*) 'Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dir', Rad_flux_five(1)%block(1)%flux_sw_down_vis_dir
+      write (*,*) 'Rad_flux_five(1)%block(blk)%flux_sw_down_vis_dif', Rad_flux_five(1)%block(1)%flux_sw_down_vis_dif
     endif
 
 !---------------------------------------------------------------------

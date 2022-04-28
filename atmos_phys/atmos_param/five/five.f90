@@ -335,6 +335,8 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
 
         enddo
     enddo
+    write (*,*) 'five_init Rad_flux_five(1)%block(1)%tdt_rad', Rad_flux_five(1)%block(1)%tdt_rad 
+
 
     !Compute pfull for initial interpolation
     do k=size(pt,3),1,-1
