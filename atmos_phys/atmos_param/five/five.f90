@@ -292,14 +292,49 @@ subroutine five_init(Physics_five, Physics_tendency_five, Rad_flux_five, &
     enddo
 
     !initialize Rad_flux_five
+    call alloc_radiation_flux_type (Rad_flux, nonzero_rad_flux_init, Atm_block)
+
     do n = 1, size(Rad_flux_five,1)
         allocate (Rad_flux_five(n)%block(Atm_block%nblks))
         do nb = 1, Atm_block%nblks
           ix = Atm_block%ibe(nb) - Atm_block%ibs(nb) + 1
           jx = Atm_block%jbe(nb) - Atm_block%jbs(nb) + 1
-          call Rad_flux_five(n)%block(nb)%alloc ( ix, jx, npz, nonzero_rad_flux_init )
-        end do
-    end do
+          ! call Rad_flux_five(n)%block(nb)%alloc ( ix, jx, npz, nonzero_rad_flux_init )
+
+          allocate (Rad_flux_five(n)%block(nb)%tdt_rad               (ix,jx,npz), &
+          Rad_flux_five(n)%block(nb)%tdt_lw                (ix,jx,npz), &
+          Rad_flux_five(n)%block(nb)%flux_sw               (ix,jx),    &
+          Rad_flux_five(n)%block(nb)%flux_sw_dir           (ix,jx),    &
+          Rad_flux_five(n)%block(nb)%flux_sw_dif           (ix,jx),    &
+          Rad_flux_five(n)%block(nb)%flux_sw_down_vis_dir  (ix,jx),    &
+          Rad_flux_five(n)%block(nb)%flux_sw_down_vis_dif  (ix,jx),    &
+          Rad_flux_five(n)%block(nb)%flux_sw_down_total_dir(ix,jx),    &
+          Rad_flux_five(n)%block(nb)%flux_sw_down_total_dif(ix,jx),    &
+          Rad_flux_five(n)%block(nb)%flux_sw_vis           (ix,jx),    &
+          Rad_flux_five(n)%block(nb)%flux_sw_vis_dir       (ix,jx),    &
+          Rad_flux_five(n)%block(nb)%flux_sw_vis_dif       (ix,jx),    &
+          Rad_flux_five(n)%block(nb)%flux_lw               (ix,jx),    &
+          Rad_flux_five(n)%block(nb)%coszen                (ix,jx),    &
+          Rad_flux_five(n)%block(nb)%extinction            (ix,jx,npz)  )
+
+          Rad_flux_five(n)%block(nb)%tdt_rad                = 0.0
+          Rad_flux_five(n)%block(nb)%tdt_lw                 = 0.0
+          Rad_flux_five(n)%block(nb)%flux_sw                = 50.0
+          Rad_flux_five(n)%block(nb)%flux_sw_dir            = 25.0
+          Rad_flux_five(n)%block(nb)%flux_sw_dif            = 25.0
+          Rad_flux_five(n)%block(nb)%flux_sw_down_vis_dir   = 12.5 * 1.1
+          Rad_flux_five(n)%block(nb)%flux_sw_down_vis_dif   = 12.5 * 1.1
+          Rad_flux_five(n)%block(nb)%flux_sw_down_total_dir = 25.0 * 1.1
+          Rad_flux_five(n)%block(nb)%flux_sw_down_total_dif = 25.0 * 1.1
+          Rad_flux_five(n)%block(nb)%flux_sw_vis            = 25.0
+          Rad_flux_five(n)%block(nb)%flux_sw_vis_dir        = 12.5
+          Rad_flux_five(n)%block(nb)%flux_sw_vis_dif        = 12.5
+          Rad_flux_five(n)%block(nb)%flux_lw                = 50.0
+          Rad_flux_five(n)%block(nb)%coszen                 = 0.50
+          Rad_flux_five(n)%block(nb)%extinction             = 0.0
+
+        enddo
+    enddo
 
     !Compute pfull for initial interpolation
     do k=size(pt,3),1,-1
