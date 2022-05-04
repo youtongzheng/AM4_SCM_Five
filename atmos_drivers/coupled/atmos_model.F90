@@ -88,6 +88,7 @@ use radiation_types_mod,only: radiation_type, &
 use physics_radiation_exch_mod,only: exchange_control_type, &
                                      exch_rad_phys_state, &
                                      clouds_from_moist_type, &
+                                     alloc_clouds_from_moist_type, & !yzheng
                                      dealloc_clouds_from_moist_type, &
                                      dealloc_radiation_flux_type, &
                                      radiation_flux_type, &
@@ -265,6 +266,7 @@ namelist /atmos_model_nml/ do_netcdf_restart, restart_tbot_qbot, nxblocks, nyblo
 
 !--- concurrent and decoupled radiation and physics variables
 type (clouds_from_moist_type), dimension(:), allocatable :: Moist_clouds
+type (clouds_from_moist_type), dimension(:), allocatable :: Moist_clouds_five !yzheng Moist_clouds
 type (cosp_from_rad_type),     dimension(:), allocatable :: Cosp_rad
 type (radiation_flux_type),    dimension(:), allocatable :: Rad_flux
 type (block_control_type)    :: Atm_block
@@ -801,7 +803,7 @@ subroutine update_atmos_model_up( Surface_boundary, Atmos)
                                 Surface_boundary%lhflx    (isw:iew,jsw:jew), &!miz
 #endif
                                 Physics_tendency_five%block(blk),  &
-                                Moist_clouds(1)%block(blk), &
+                                Moist_clouds_five(1)%block(blk), &
 #ifdef use_AM3_physics
                                 Cosp_rad(1)%control, &
 #endif
@@ -911,7 +913,8 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
    allocate (Rad_flux(idx), &
              Rad_flux_five(idx), &  !yzheng
              Cosp_rad(idx), &
-             Moist_clouds(idx))
+             Moist_clouds(idx), &
+             Moist_clouds_five(idx)) !yzheng
 
    IF ( file_exist('input.nml')) THEN
 #ifdef INTERNAL_FILE_NML
@@ -1005,8 +1008,10 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
                               Atmos%Surf_diff,    &
                               Exch_ctrl,          &
                               Atm_block,          &
-                              Moist_clouds,       &
+                              Moist_clouds_five,       &
                               Physics, Physics_tendency, do_five, Physics_five = Physics_five) !yzheng
+        call alloc_clouds_from_moist_type(Moist_clouds, Exch_ctrl, Atm_block, &
+        do_five, nlev_five)
      end if
 !--- need to return tracer values back to dy-core
 !--- because tracer initilization inside of physics
