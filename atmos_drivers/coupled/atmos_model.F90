@@ -1011,7 +1011,7 @@ subroutine atmos_model_init (Atmos, Time_init, Time, Time_step, &
                               Moist_clouds_five,       &
                               Physics, Physics_tendency, do_five, Physics_five = Physics_five) !yzheng
         call alloc_clouds_from_moist_type(Moist_clouds, Exch_ctrl, Atm_block, &
-        do_five, nlev_five)
+        .false., nlev_five)
      end if
 !--- need to return tracer values back to dy-core
 !--- because tracer initilization inside of physics
