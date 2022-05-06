@@ -35,7 +35,7 @@ use             fms_mod, only: open_namelist_file
 ! FV core modules:
 !-----------------
 use            fv_pack, only: ak, bk, nlon, mlat, nlev, ncnst, get_eta_level
-! use            scm_rf01_mod, only: divf
+use            scm_rf01_mod, only: divf
 
 !-----------------------------------------------------------------
 implicit none
@@ -48,6 +48,7 @@ public five_init, atmos_physics_driver_inputs_five, &
                   five_tend_low_to_high, five_tend_high_to_low, &
                   five_var_high_to_low_4d, &
                   update_bomex_forc_five, &
+                  update_rf01_forc_five, &
                   atmosphere_pref_five
 
 !------------------------------------------------------------------------
