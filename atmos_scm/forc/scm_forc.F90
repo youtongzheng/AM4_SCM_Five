@@ -119,7 +119,7 @@ module scm_forc_mod
                                  update_mc3e_forc, mc3e_forc_diagnostic_init,         &
                                  get_mc3e_sst, mc3e_surface_flux_loop, get_mc3e_sfc
    !yzheng: modules and variables related to FIVE
-   use      five_mod, only: update_bomex_forc_five
+   use      five_mod, only: update_bomex_forc_five, update_rf01_forc_five
 
 implicit none
 
@@ -790,7 +790,9 @@ select case (trim(experiment))
 
    case ('rf01') !h1g
       call update_rf01_forc(time_interp,time_diag,dt_int)
-
+      !yzheng
+      if (do_five) call update_rf01_forc_five()
+      
    case ('rf02') !h1g
      call update_rf02_forc(time_interp,time_diag,dt_int)
 
